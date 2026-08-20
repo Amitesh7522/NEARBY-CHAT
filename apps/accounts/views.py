@@ -14,8 +14,8 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 
-from .forms import UserRegisterForm, UserLoginForm, ProfileEditForm, UserPreferenceForm
-from .models import Profile, UserPreference, Interest
+from .forms import AccountRegisterForm, UserRegisterForm, OnboardingProfileForm, UserLoginForm, ProfileEditForm, UserPreferenceForm
+from .models import Profile, UserPreference, Interest, PRESET_AVATARS, generate_unique_user_identity
 from .services import VerificationService, ReferralService, BadgeService
 from apps.safety.models import Block
 from apps.chat.services import ChatService
@@ -23,43 +23,99 @@ from apps.chat.services import ChatService
 User = get_user_model()
 
 def register_view(request):
-    """Handles new user registration with interest selection."""
+    """
+    Step 1 Registration:
+    Asks ONLY for Email or Phone + OTP + Password.
+    Automatically assigns a unique temporary name (e.g. User 4821) and deterministic avatar.
+    Redirects to Step 2 Onboarding (/accounts/onboarding/).
+    """
     if request.user.is_authenticated:
         return redirect('core:home')
 
     if request.method == 'POST':
-        form = UserRegisterForm(request.POST)
+        form = AccountRegisterForm(request.POST)
         if form.is_valid():
-            with transaction.atomic():
-                user = form.save(commit=False)
-                user.set_password(form.cleaned_data['password'])
-                user.save()
+            auth_type = form.cleaned_data['auth_type']
+            identifier = form.cleaned_data['identifier']
+            password = form.cleaned_data['password']
 
-                display_name = form.cleaned_data.get('display_name')
+            with transaction.atomic():
+                username, default_display_name, preset = generate_unique_user_identity()
+                
+                if '@' in identifier:
+                    email = identifier
+                    phone_number = None
+                else:
+                    email = f"{username}@nearbychat.internal"
+                    phone_number = identifier
+
+                user = User.objects.create_user(
+                    username=username,
+                    email=email,
+                    phone_number=phone_number,
+                    password=password,
+                    is_verified=True
+                )
+
                 if hasattr(user, 'profile'):
-                    if display_name:
-                        user.profile.display_name = display_name
-                    interests = form.cleaned_data.get('interests')
-                    if interests:
-                        user.profile.interests.set(interests)
+                    user.profile.display_name = default_display_name
+                    user.profile.is_temporary_name = True
+                    user.profile.avatar_preset = preset
                     user.profile.save()
 
             login(request, user, backend='apps.accounts.backends.EmailOrUsernameModelBackend')
 
-            # Record community invite / referral attribution if invite code present
+            # Record referral / invite attribution if invite code present in session/url
             invite_code = request.session.pop('invite_code', None) or request.GET.get('ref', '')
             if invite_code:
                 ip = request.META.get('REMOTE_ADDR')
                 ReferralService.record_referral(invite_code=invite_code, referred_user=user, ip_address=ip)
 
-            messages.success(request, _('Welcome to Nearby Chat! Your account is ready.'))
-            return redirect('core:home')
+            messages.success(request, _('Account created successfully! Now set up your profile.'))
+            return redirect('accounts:onboarding')
     else:
-        form = UserRegisterForm()
+        form = AccountRegisterForm()
 
     return render(request, 'accounts/register.html', {
         'form': form,
+    })
+
+
+@login_required
+def onboarding_view(request):
+    """
+    Step 2 Onboarding (100% Optional):
+    Allows user to personalize Name, Avatar, Gender, and Interests.
+    User can click 'Skip for now' or 'Save & Continue' to enter Home.
+    """
+    profile = request.user.profile
+
+    # If user explicitly chooses to skip
+    if request.GET.get('skip') == '1' or request.POST.get('action') == 'skip':
+        messages.info(request, _("You're all set! You can complete your profile anytime in Settings."))
+        return redirect('core:home')
+
+    if request.method == 'POST':
+        form = OnboardingProfileForm(request.POST, request.FILES, instance=profile)
+        if form.is_valid():
+            saved_profile = form.save(commit=False)
+            display_name = form.cleaned_data.get('display_name', '').strip()
+            if display_name:
+                saved_profile.display_name = display_name
+                saved_profile.is_temporary_name = False
+            saved_profile.save()
+            form.save_m2m()
+
+            messages.success(request, _('Profile updated! Welcome to Nearby Chat.'))
+            return redirect('core:home')
+    else:
+        form = OnboardingProfileForm(instance=profile)
+
+    return render(request, 'accounts/onboarding.html', {
+        'form': form,
+        'profile': profile,
         'all_interests': Interest.objects.all(),
+        'preset_avatars': PRESET_AVATARS,
     })
 
 
@@ -124,6 +180,7 @@ def profile_view(request, username=None):
     badge_details = profile.get_badge_details() if profile else None
     invite_progress = ReferralService.get_inviter_progress(request.user) if is_own_profile else None
     rating_summary = ChatService.get_user_rating_summary(target_user)
+    completion_checklist = profile.get_completion_checklist() if profile and is_own_profile else None
 
     return render(request, 'accounts/profile.html', {
         'target_user': target_user,
@@ -135,6 +192,7 @@ def profile_view(request, username=None):
         'rating_summary': rating_summary,
         'badge_details': badge_details,
         'invite_progress': invite_progress,
+        'completion_checklist': completion_checklist,
     })
 
 
@@ -220,10 +278,21 @@ def send_otp_api(request):
     if not identifier:
         return Response({'error': _('Phone number or email is required.')}, status=status.HTTP_400_BAD_REQUEST)
 
+    if purpose == 'signup':
+        if '@' in identifier:
+            if User.objects.filter(email__iexact=identifier.lower()).exists():
+                return Response({'error': _('An account with this email already exists.')}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            clean_digits = ''.join(c for c in identifier if c.isdigit())
+            if len(clean_digits) >= 10:
+                phone_std = clean_digits[-10:]
+                if User.objects.filter(phone_number=phone_std).exists():
+                    return Response({'error': _('An account with this phone number already exists.')}, status=status.HTTP_400_BAD_REQUEST)
+
     success, msg = VerificationService.send_otp_challenge(identifier, purpose)
     if success:
-        return Response({'message': msg, 'status': 'sent'})
-    return Response({'error': msg}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({'success': True, 'message': msg, 'cooldown': 60, 'status': 'sent'})
+    return Response({'success': False, 'error': msg}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['POST'])

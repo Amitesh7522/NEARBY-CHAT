@@ -142,18 +142,31 @@ class ReferralAndBadgeTests(TestCase):
         self.assertIn(f'/accounts/register/?ref={inviter_code}', resp.url)
         self.assertEqual(self.client.session.get('invite_code'), inviter_code)
 
-        # Register new user
+        # Register new user with OTP challenge
+        email = 'new_friend@example.com'
+        from apps.accounts.models import OTPVerification
+        from apps.accounts.services import hash_otp
+        from django.utils import timezone
+        from datetime import timedelta
+        raw_otp = '999111'
+        OTPVerification.objects.create(
+            identifier=email,
+            otp_hash=hash_otp(raw_otp),
+            purpose='signup',
+            expires_at=timezone.now() + timedelta(minutes=10),
+        )
+
         reg_resp = self.client.post('/accounts/register/', {
-            'username': 'new_friend',
-            'email': 'new_friend@example.com',
+            'auth_type': 'email',
+            'identifier': email,
+            'otp': raw_otp,
             'password': 'StrongPassword123!',
             'confirm_password': 'StrongPassword123!',
-            'display_name': 'New Friend',
         })
         self.assertEqual(reg_resp.status_code, 302)
 
         # Check Referral record created
-        new_user = User.objects.get(username='new_friend')
+        new_user = User.objects.get(email=email)
         referral = Referral.objects.filter(referred_user=new_user).first()
         self.assertIsNotNone(referral)
         self.assertEqual(referral.inviter, self.user_inviter)

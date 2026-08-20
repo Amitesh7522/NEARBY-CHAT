@@ -88,9 +88,24 @@ COMMUNITY_BADGES = {
     },
 }
 
+PRESET_AVATARS = ['astro', 'robot', 'fox', 'panda', 'cat', 'bear', 'lion', 'alien']
+
 def generate_invite_code():
     chars = string.ascii_uppercase + string.digits
     return ''.join(secrets.choice(chars) for _ in range(8))
+
+def generate_unique_user_identity():
+    """
+    Generates a unique random 4-5 digit number for new users.
+    Returns (username, display_name, deterministic_preset). E.g. ('user_4821', 'User 4821', 'fox')
+    """
+    import random
+    while True:
+        num = random.randint(1000, 99999)
+        uname = f"user_{num}"
+        if not User.objects.filter(username=uname).exists():
+            preset = PRESET_AVATARS[num % len(PRESET_AVATARS)]
+            return uname, f"User {num}", preset
 
 
 class Profile(models.Model):
@@ -115,6 +130,7 @@ class Profile(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     display_name = models.CharField(_('Display Name'), max_length=60, blank=True)
+    is_temporary_name = models.BooleanField(_('Temporary Display Name'), default=True, help_text=_('True if using auto-generated User {number}'))
     avatar = models.ImageField(_('Avatar'), upload_to='avatars/%Y/%m/', blank=True, null=True)
     avatar_preset = models.CharField(_('Cartoon Avatar Preset'), max_length=50, blank=True, default='')
     bio = models.TextField(_('Bio'), max_length=500, blank=True)
@@ -175,6 +191,35 @@ class Profile(models.Model):
 
     def get_badge_details(self):
         return COMMUNITY_BADGES.get(self.badge, COMMUNITY_BADGES['new_member'])
+
+    @property
+    def is_profile_completed(self):
+        """Returns True if the user has customized their display name and added at least 1 interest."""
+        has_real_name = not self.is_temporary_name and bool(self.display_name)
+        has_interests = self.interests.exists()
+        return has_real_name and has_interests
+
+    def get_completion_checklist(self):
+        """Returns a checklist dict for profile completion UI."""
+        has_name = not self.is_temporary_name and bool(self.display_name)
+        has_photo = bool(self.avatar) or bool(self.avatar_preset)
+        has_gender = self.gender not in ('', 'prefer_not_to_say', None)
+        has_interests = self.interests.exists()
+        
+        total_items = 4
+        completed_items = sum([1 for item in [has_name, has_photo, has_gender, has_interests] if item])
+        percentage = int((completed_items / total_items) * 100)
+        
+        return {
+            'has_name': has_name,
+            'has_photo': has_photo,
+            'has_gender': has_gender,
+            'has_interests': has_interests,
+            'completed_count': completed_items,
+            'total_count': total_items,
+            'percentage': percentage,
+            'is_completed': completed_items >= 3,
+        }
 
     @property
     def is_currently_online(self):

@@ -19,10 +19,15 @@ class EmailOrUsernameModelBackend(ModelBackend):
         if not username or not password:
             return None
 
-        # Search for user by case-insensitive username or email
-        user = User.objects.filter(
-            Q(username__iexact=username) | Q(email__iexact=username)
-        ).first()
+        # Search for user by case-insensitive username, email, or phone number
+        clean_username = username.strip()
+        clean_digits = ''.join(c for c in clean_username if c.isdigit())
+        
+        query = Q(username__iexact=clean_username) | Q(email__iexact=clean_username)
+        if len(clean_digits) >= 10:
+            query |= Q(phone_number__icontains=clean_digits[-10:])
+
+        user = User.objects.filter(query).first()
 
         if user and user.check_password(password) and self.user_can_authenticate(user):
             return user

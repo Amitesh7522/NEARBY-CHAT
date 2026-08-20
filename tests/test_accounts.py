@@ -39,20 +39,27 @@ class AccountsTestCase(TestCase):
         self.assertEqual(res.status_code, 302)
 
     def test_registration_flow(self):
-        """New user signup properly creates user, sets display name and interests."""
+        """New user signup properly creates user with Step 1 OTP and Step 2 profile personalization."""
+        email = 'new@example.com'
+        VerificationService.send_otp_challenge(email, purpose='signup')
+        otp_rec = OTPVerification.objects.filter(identifier=email, is_used=False).first()
+        from apps.accounts.services import hash_otp
+        raw_otp = '123456'
+        otp_rec.otp_hash = hash_otp(raw_otp)
+        otp_rec.save()
+
         res = self.client.post(reverse('accounts:register'), {
-            'username': 'newuser',
-            'display_name': 'New Person',
-            'email': 'new@example.com',
-            'interests': [self.interest_gaming.id],
+            'auth_type': 'email',
+            'identifier': email,
+            'otp': raw_otp,
             'password': 'StrongPassword123!',
             'confirm_password': 'StrongPassword123!'
         })
         self.assertEqual(res.status_code, 302)
-        new_u = User.objects.filter(username='newuser').first()
+        self.assertRedirects(res, reverse('accounts:onboarding'))
+        new_u = User.objects.filter(email=email).first()
         self.assertIsNotNone(new_u)
-        self.assertEqual(new_u.profile.display_name, 'New Person')
-        self.assertTrue(new_u.profile.interests.filter(slug='gaming').exists())
+        self.assertTrue(new_u.profile.is_temporary_name)
 
     def test_otp_verification_service(self):
         """Tests OTP dispatch and verification service."""

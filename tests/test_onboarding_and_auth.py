@@ -1,0 +1,219 @@
+"""
+Automated unit and integration tests for the decoupled Registration & Profile Onboarding flow.
+"""
+from django.test import TestCase, Client
+from django.contrib.auth import get_user_model
+from django.urls import reverse
+
+from apps.accounts.models import Profile, Interest, PRESET_AVATARS, generate_unique_user_identity
+from apps.accounts.services import VerificationService
+
+User = get_user_model()
+
+class OnboardingAndAuthTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        # Seed test interests
+        self.gaming = Interest.objects.create(name='Gaming', slug='gaming', emoji='🎮')
+        self.music = Interest.objects.create(name='Music', slug='music', emoji='🎵')
+        self.tech = Interest.objects.create(name='Technology', slug='tech', emoji='💻')
+        self.travel = Interest.objects.create(name='Travel', slug='travel', emoji='✈️')
+        self.food = Interest.objects.create(name='Food', slug='food', emoji='🍳')
+        self.art = Interest.objects.create(name='Art', slug='art', emoji='🎨')
+
+    def test_unique_user_identity_generator(self):
+        """Validates that generate_unique_user_identity creates valid, unique identities."""
+        uname, dname, preset = generate_unique_user_identity()
+        self.assertTrue(uname.startswith('user_'))
+        self.assertTrue(dname.startswith('User '))
+        self.assertIn(preset, PRESET_AVATARS)
+
+    def test_step1_registration_with_email_and_real_otp(self):
+        """Step 1: User signs up with Email + Real OTP + Password."""
+        email = "rohan.sharma@example.com"
+        
+        # 1. Dispatch real OTP challenge
+        success, msg = VerificationService.send_otp_challenge(email, purpose='signup')
+        self.assertTrue(success)
+
+        # Retrieve generated OTP hash record
+        from apps.accounts.models import OTPVerification
+        otp_rec = OTPVerification.objects.filter(identifier=email, is_used=False).first()
+        self.assertIsNotNone(otp_rec)
+
+        # Re-generate or simulate verification with matching OTP
+        # We test verify_otp_challenge with invalid OTP
+        self.assertFalse(VerificationService.verify_otp_challenge(email, "000000", purpose='signup'))
+
+        # Let's test form submission directly with valid OTP
+        # Create OTP challenge and verify
+        from apps.accounts.services import generate_otp, hash_otp
+        raw_otp = "852963"
+        otp_rec.otp_hash = hash_otp(raw_otp)
+        otp_rec.save()
+
+        form_data = {
+            'auth_type': 'email',
+            'identifier': email,
+            'otp': raw_otp,
+            'password': 'SecurePassword123!',
+            'confirm_password': 'SecurePassword123!',
+        }
+
+        resp = self.client.post(reverse('accounts:register'), data=form_data)
+        # Should redirect to Step 2 Onboarding
+        self.assertRedirects(resp, reverse('accounts:onboarding'))
+
+        # Check that user and profile exist with temporary identity
+        user = User.objects.filter(email=email).first()
+        self.assertIsNotNone(user)
+        self.assertTrue(user.is_verified)
+        self.assertTrue(user.username.startswith('user_'))
+        self.assertTrue(user.profile.is_temporary_name)
+        self.assertTrue(user.profile.display_name.startswith('User '))
+        self.assertIn(user.profile.avatar_preset, PRESET_AVATARS)
+
+    def test_step1_registration_with_phone_number(self):
+        """Step 1: User signs up with Phone Number + Real OTP + Password."""
+        from django.utils import timezone
+        from datetime import timedelta
+        phone = "9876543299"
+        
+        from apps.accounts.models import OTPVerification
+        from apps.accounts.services import hash_otp
+
+        raw_otp = "123456"
+        OTPVerification.objects.create(
+            identifier=phone,
+            otp_hash=hash_otp(raw_otp),
+            purpose='signup',
+            expires_at=timezone.now() + timedelta(minutes=10),
+        )
+
+        form_data = {
+            'auth_type': 'phone',
+            'identifier': phone,
+            'otp': raw_otp,
+            'password': 'PhonePassword123!',
+            'confirm_password': 'PhonePassword123!',
+        }
+
+        resp = self.client.post(reverse('accounts:register'), data=form_data)
+        self.assertRedirects(resp, reverse('accounts:onboarding'))
+
+        user = User.objects.filter(phone_number=phone).first()
+        self.assertIsNotNone(user)
+        self.assertTrue(user.profile.is_temporary_name)
+
+    def test_step2_onboarding_save_profile(self):
+        """Step 2: User customizes Name, Gender, Avatar, and Interests."""
+        # Create registered user
+        user = User.objects.create_user(
+            username='user_5555',
+            email='maya@example.com',
+            password='TestPassword123!',
+            is_verified=True
+        )
+        user.profile.display_name = 'User 5555'
+        user.profile.is_temporary_name = True
+        user.profile.save()
+
+        self.client.force_login(user)
+
+        # GET onboarding page
+        get_resp = self.client.get(reverse('accounts:onboarding'))
+        self.assertEqual(get_resp.status_code, 200)
+
+        # POST profile details
+        post_data = {
+            'display_name': 'Maya Patel',
+            'avatar_preset': 'panda',
+            'gender': 'female',
+            'interests': [self.gaming.id, self.music.id, self.tech.id]
+        }
+        post_resp = self.client.post(reverse('accounts:onboarding'), data=post_data)
+        self.assertRedirects(post_resp, reverse('core:home'))
+
+        user.profile.refresh_from_db()
+        self.assertEqual(user.profile.display_name, 'Maya Patel')
+        self.assertFalse(user.profile.is_temporary_name)
+        self.assertEqual(user.profile.gender, 'female')
+        self.assertEqual(user.profile.avatar_preset, 'panda')
+        self.assertEqual(user.profile.interests.count(), 3)
+        self.assertTrue(user.profile.is_profile_completed)
+
+    def test_step2_onboarding_skip_for_now(self):
+        """Step 2: User skips profile setup and lands directly on Home with functional temporary profile."""
+        user = User.objects.create_user(
+            username='user_9999',
+            email='skipper@example.com',
+            password='TestPassword123!',
+            is_verified=True
+        )
+        user.profile.display_name = 'User 9999'
+        user.profile.is_temporary_name = True
+        user.profile.save()
+
+        self.client.force_login(user)
+
+        skip_resp = self.client.get(reverse('accounts:onboarding') + '?skip=1')
+        self.assertRedirects(skip_resp, reverse('core:home'))
+
+        # Profile remains functional
+        user.profile.refresh_from_db()
+        self.assertEqual(user.profile.display_name, 'User 9999')
+        self.assertTrue(user.profile.is_temporary_name)
+        self.assertFalse(user.profile.is_profile_completed)
+
+        # Checklist returns accurate stats
+        checklist = user.profile.get_completion_checklist()
+        self.assertFalse(checklist['has_name'])
+        self.assertFalse(checklist['has_interests'])
+        self.assertFalse(checklist['is_completed'])
+
+    def test_max_interests_limit_enforcement(self):
+        """Selecting more than 5 interests raises validation error."""
+        user = User.objects.create_user(
+            username='user_1234',
+            email='gamer@example.com',
+            password='TestPassword123!',
+            is_verified=True
+        )
+        self.client.force_login(user)
+
+        # Create 6th interest
+        anime = Interest.objects.create(name='Anime', slug='anime', emoji='🎞️')
+
+        post_data = {
+            'display_name': 'Gamer Pro',
+            'interests': [self.gaming.id, self.music.id, self.tech.id, self.travel.id, self.food.id, anime.id]
+        }
+        resp = self.client.post(reverse('accounts:onboarding'), data=post_data)
+        self.assertEqual(resp.status_code, 200) # Form errors out and re-renders
+        self.assertIn('interests', resp.context['form'].errors)
+
+    def test_login_with_email_and_phone(self):
+        """User can log in using their email or phone number."""
+        user = User.objects.create_user(
+            username='user_7777',
+            email='login.test@example.com',
+            phone_number='9876500000',
+            password='MySecurePassword123!',
+            is_verified=True
+        )
+
+        # 1. Login with Email
+        email_resp = self.client.post(reverse('accounts:login'), {
+            'username': 'login.test@example.com',
+            'password': 'MySecurePassword123!',
+        })
+        self.assertRedirects(email_resp, reverse('core:home'))
+
+        self.client.logout()
+
+        # 2. Login with Phone Number
+        phone_resp = self.client.post(reverse('accounts:login'), {
+            'username': '9876500000',
+            'password': 'MySecurePassword123!',
+        })
+        self.assertRedirects(phone_resp, reverse('core:home'))
