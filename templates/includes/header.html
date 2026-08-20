@@ -61,8 +61,6 @@
       <a href="{% url 'accounts:profile' %}" class="avatar-container" title="{{ user.profile.get_display_name }}">
         <img src="{{ user.profile.get_avatar_url }}" alt="{{ user.username }}" class="avatar avatar-sm">
       </a>
-    {% else %}
-      <a href="{% url 'accounts:login' %}" class="btn btn-sm btn-primary">{% trans "Log In" %}</a>
     {% endif %}
   </div>
 </header>
