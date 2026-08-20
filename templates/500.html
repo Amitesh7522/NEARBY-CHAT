@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% load i18n static %}
+
+{% block title %}500 — Server Error — Nearby Chat{% endblock %}
+
+{% block content %}
+<div style="min-height: 60vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: var(--space-8) var(--space-4);">
+  <div style="font-size: 72px; font-weight: 900; background: linear-gradient(135deg, #ef4444 0%, #f97316 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; line-height: 1; margin-bottom: var(--space-4);">
+    500
+  </div>
+  
+  <h2 style="font-size: var(--text-xl); margin-bottom: var(--space-2);">{% trans "Something went wrong on our side" %}</h2>
+  <p style="color: var(--text-secondary); max-width: 420px; font-size: var(--text-sm); line-height: 1.5; margin-bottom: var(--space-6);">
+    {% trans "Our team has been notified and we are already looking into it. Please try refreshing or return to the homepage." %}
+  </p>
+
+  <div style="display: flex; gap: var(--space-3); flex-wrap: wrap; justify-content: center;">
+    <button onclick="window.location.reload()" class="btn btn-primary">
+      {% trans "Try Again" %}
+    </button>
+    <a href="{% url 'core:home' %}" class="btn btn-secondary">
+      {% trans "Back to Home" %}
+    </a>
+  </div>
+</div>
+{% endblock %}

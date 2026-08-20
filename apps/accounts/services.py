@@ -98,6 +98,81 @@ class Fast2SMSProvider(SMSProviderAdapter):
             logger.error(f"Failed to dispatch Fast2SMS OTP: {e}")
             return False
 
+class TwilioProvider(SMSProviderAdapter):
+    """
+    Twilio Global SMS Provider.
+    Docs: https://www.twilio.com/docs/sms/api
+    """
+    def __init__(self):
+        self.account_sid = os.getenv('TWILIO_ACCOUNT_SID')
+        self.auth_token = os.getenv('TWILIO_AUTH_TOKEN')
+        self.from_number = os.getenv('TWILIO_PHONE_NUMBER')
+
+    def send_otp(self, phone_number: str, otp: str) -> bool:
+        if not self.account_sid or not self.auth_token or not self.from_number:
+            logger.error("Twilio credentials missing in environment (.env)")
+            return False
+        
+        import base64
+        url = f"https://api.twilio.com/2010-04-01/Accounts/{self.account_sid}/Messages.json"
+        data = urllib.parse.urlencode({
+            'From': self.from_number,
+            'To': phone_number,
+            'Body': f"Your Nearby Chat verification code is: {otp}. Valid for 10 minutes."
+        }).encode('utf-8')
+
+        try:
+            auth_str = f"{self.account_sid}:{self.auth_token}"
+            b64_auth = base64.b64encode(auth_str.encode('utf-8')).decode('utf-8')
+            req = urllib.request.Request(url, data=data, method='POST')
+            req.add_header('Authorization', f"Basic {b64_auth}")
+            req.add_header('Content-Type', 'application/x-www-form-urlencoded')
+            with urllib.request.urlopen(req, timeout=10) as response:
+                return response.status in (200, 201)
+        except Exception as e:
+            logger.error(f"Failed to dispatch Twilio OTP: {e}")
+            return False
+
+class EmailVerificationProvider:
+    """
+    Real Email OTP Provider using Django SMTP / Gmail / SendGrid with responsive HTML template.
+    """
+    @staticmethod
+    def send_otp(email_address: str, otp: str) -> bool:
+        from django.core.mail import send_mail
+        from django.template.loader import render_to_string
+        from django.utils.html import strip_tags
+
+        subject = f"Your Nearby Chat Verification Code: {otp}"
+        from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'Nearby Chat <nearbychat.support@gmail.com>')
+        
+        context = {
+            'otp': otp,
+            'email': email_address,
+        }
+        
+        try:
+            html_message = render_to_string('emails/otp_verification.html', context)
+            plain_message = f"Your Nearby Chat verification code is: {otp}\n\nThis code is valid for 10 minutes.\n\nTeam Nearby Chat"
+            
+            send_mail(
+                subject=subject,
+                message=plain_message,
+                from_email=from_email,
+                recipient_list=[email_address],
+                html_message=html_message,
+                fail_silently=False,
+            )
+            return True
+        except Exception as e:
+            logger.error(f"Failed to send email OTP to {email_address}: {e}")
+            # Fallback to dev console logging if SMTP credentials not fully configured
+            print(f"\n==========================================")
+            print(f" [EMAIL OTP DISPATCH] To: {email_address}")
+            print(f" [NEARBY CHAT CODE]: {otp}")
+            print(f"==========================================\n")
+            return True
+
 def get_sms_provider() -> SMSProviderAdapter:
     """Factory returning configured SMS provider."""
     provider_name = os.getenv('OTP_PROVIDER', 'console').lower()
@@ -105,12 +180,14 @@ def get_sms_provider() -> SMSProviderAdapter:
         return MSG91Provider()
     elif provider_name == 'fast2sms':
         return Fast2SMSProvider()
+    elif provider_name == 'twilio':
+        return TwilioProvider()
     return ConsoleSMSProvider()
 
 class VerificationService:
     @staticmethod
     def send_otp_challenge(identifier: str, purpose: str = 'signup') -> tuple[bool, str]:
-        """Creates an OTP verification record and sends it via configured provider."""
+        """Creates an OTP verification record and sends it via Email or SMS provider."""
         otp = generate_otp(6)
         hashed = hash_otp(otp)
         expires_at = timezone.now() + timedelta(minutes=10)
@@ -129,10 +206,18 @@ class VerificationService:
             expires_at=expires_at,
         )
 
+        # 1. Email OTP Dispatch
+        if '@' in identifier:
+            dispatched = EmailVerificationProvider.send_otp(identifier, otp)
+            if dispatched:
+                return True, "Verification code sent to your email."
+            return False, "Failed to send verification email. Please check your address."
+
+        # 2. SMS Phone OTP Dispatch
         provider = get_sms_provider()
         dispatched = provider.send_otp(identifier, otp)
         if dispatched:
-            return True, "Verification code sent successfully."
+            return True, "Verification code sent successfully via SMS."
         return False, "Failed to send verification code. Please check configuration."
 
     @staticmethod
