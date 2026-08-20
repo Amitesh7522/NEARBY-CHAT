@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% load i18n static %}
+
+{% block title %}{% trans "Help & Support" %} — Nearby Chat{% endblock %}
+
+{% block content %}
+<div style="max-width: 680px; margin: 0 auto; display: flex; flex-direction: column; gap: var(--space-6);">
+  
+  <div>
+    <h2>{% trans "Help & Support Center" %}</h2>
+    <p style="font-size: var(--text-sm); color: var(--text-muted);">{% trans "Find answers to frequently asked questions or contact our support team." %}</p>
+  </div>
+
+  <!-- FAQ Accordion -->
+  <div class="card" style="display: flex; flex-direction: column; gap: var(--space-4);">
+    <h3 style="font-size: var(--text-base); border-bottom: 1px solid var(--border-color); padding-bottom: var(--space-3);">{% trans "Frequently Asked Questions" %}</h3>
+    
+    <div>
+      <h4 style="font-size: var(--text-sm); color: var(--primary); margin-bottom: 4px;">{% trans "How does Random Chat work?" %}</h4>
+      <p style="font-size: var(--text-xs); color: var(--text-secondary); line-height: 1.5;">
+        {% trans "Random Chat places you in a real-time queue to match with another available user. Once a match is found, an instant private conversation is opened." %}
+      </p>
+    </div>
+
+    <div>
+      <h4 style="font-size: var(--text-sm); color: var(--primary); margin-bottom: 4px;">{% trans "How do I block or report someone?" %}</h4>
+      <p style="font-size: var(--text-xs); color: var(--text-secondary); line-height: 1.5;">
+        {% trans "You can block or report any user by visiting their profile or clicking the shield/flag icon in the chat header. Blocked users cannot message you or see your online status." %}
+      </p>
+    </div>
+
+    <div>
+      <h4 style="font-size: var(--text-sm); color: var(--primary); margin-bottom: 4px;">{% trans "Can I switch the language to Hindi?" %}</h4>
+      <p style="font-size: var(--text-xs); color: var(--text-secondary); line-height: 1.5;">
+        {% trans "Yes! Click the language button in the top navigation bar or go to Settings → Language to switch between English and Hindi." %}
+      </p>
+    </div>
+
+    <div>
+      <h4 style="font-size: var(--text-sm); color: var(--primary); margin-bottom: 4px;">{% trans "How do I delete my account?" %}</h4>
+      <p style="font-size: var(--text-xs); color: var(--text-secondary); line-height: 1.5;">
+        {% trans "Open the hamburger menu → Settings → Delete Account. Enter your password to permanently delete all your profile data and chat records." %}
+      </p>
+    </div>
+  </div>
+
+  <!-- Direct Email Contact Box -->
+  <div class="card" style="padding: var(--space-4) var(--space-5); display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(6, 182, 212, 0.08) 100%); border: 1px solid rgba(99, 102, 241, 0.2);">
+    <div style="display: flex; align-items: center; gap: var(--space-3);">
+      <div style="font-size: 24px;">✉️</div>
+      <div>
+        <div style="font-weight: 700; font-size: var(--text-sm);">{% trans "Direct Email Support" %}</div>
+        <div style="font-size: var(--text-xs); color: var(--text-muted);">{% trans "Write directly to our team anytime" %}</div>
+      </div>
+    </div>
+    <a href="mailto:nearbychat.support@gmail.com" class="btn btn-sm btn-primary" style="font-weight: 600;">
+      nearbychat.support@gmail.com
+    </a>
+  </div>
+
+  <!-- Contact Support Form -->
+  <div class="card">
+    <h3 style="font-size: var(--text-base); margin-bottom: var(--space-4);">{% trans "Contact Support" %}</h3>
+    
+    <form method="post">
+      {% csrf_token %}
+      
+      <div class="form-group">
+        <label class="form-label">{% trans "Subject" %}</label>
+        <input type="text" name="subject" class="input-field" placeholder="{% trans 'Brief description of your issue' %}" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">{% trans "Message" %}</label>
+        <textarea name="message" class="input-field" rows="4" placeholder="{% trans 'Tell us how we can help you...' %}" required></textarea>
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="margin-top: var(--space-2);">
+        {% trans "Send Inquiry" %}
+      </button>
+    </form>
+  </div>
+
+</div>
+{% endblock %}

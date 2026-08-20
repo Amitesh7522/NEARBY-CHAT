@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% load i18n static %}
+
+{% block title %}{% trans "Create Room" %} — Nearby Chat{% endblock %}
+
+{% block content %}
+<div style="max-width: 540px; margin: 0 auto;">
+  <div class="card">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-5);">
+      <h2>{% trans "Create a Room" %}</h2>
+      <a href="{% url 'rooms:list' %}" class="btn btn-sm btn-secondary">{% trans "Cancel" %}</a>
+    </div>
+
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+
+      <div class="form-group">
+        <label class="form-label">{% trans "Room Name" %}</label>
+        {{ form.name }}
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">{% trans "Topic / Category" %}</label>
+        {{ form.topic }}
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">{% trans "Description" %}</label>
+        {{ form.description }}
+      </div>
+
+      <div class="checkbox-group" style="margin-top: var(--space-4);">
+        {{ form.is_public }}
+        <label class="form-label" style="font-weight: 500; cursor: pointer;" for="{{ form.is_public.id_for_label }}">
+          {% trans "Make this room public (Anyone can discover and join)" %}
+        </label>
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: var(--space-5);">
+        {% trans "Create & Launch Room" %}
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

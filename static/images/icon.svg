@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+  <defs>
+    <!-- Background Radial / Linear Glow -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F172A"/>
+      <stop offset="50%" stop-color="#111827"/>
+      <stop offset="100%" stop-color="#030712"/>
+    </linearGradient>
+
+    <!-- Wave 1: Cyan to Electric Indigo (The "Here" Signal) -->
+    <linearGradient id="waveCyanIndigo" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#22D3EE"/>
+      <stop offset="50%" stop-color="#6366F1"/>
+      <stop offset="100%" stop-color="#4F46E5"/>
+    </linearGradient>
+
+    <!-- Wave 2: Neon Sunset Rose to Vivid Amber (The "Nearby" Spark) -->
+    <linearGradient id="waveRoseAmber" x1="100%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#F59E0B"/>
+      <stop offset="50%" stop-color="#F43F5E"/>
+      <stop offset="100%" stop-color="#8B5CF6"/>
+    </linearGradient>
+
+    <!-- Center Pulse Core Glow -->
+    <radialGradient id="coreGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="30%" stop-color="#67E8F9" stop-opacity="0.9"/>
+      <stop offset="70%" stop-color="#6366F1" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#6366F1" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Subtle Bevel Border -->
+    <linearGradient id="bevelBorder" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#475569" stop-opacity="0.8"/>
+      <stop offset="50%" stop-color="#334155" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#1E293B" stop-opacity="0.6"/>
+    </linearGradient>
+
+    <!-- Drop Shadow Filter for Glyph Depth -->
+    <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- Squircle Base Canvas -->
+  <rect x="4" y="4" width="112" height="112" rx="30" fill="url(#bgGrad)" stroke="url(#bevelBorder)" stroke-width="1.5"/>
+
+  <!-- Ambient Radar Resonance Rings (Atmosphere) -->
+  <circle cx="60" cy="60" r="44" stroke="#6366F1" stroke-width="1" stroke-dasharray="3 4" stroke-opacity="0.15"/>
+  <circle cx="60" cy="60" r="34" stroke="#22D3EE" stroke-width="1" stroke-opacity="0.2"/>
+
+  <!-- Left Dynamic Arc (Forms left pillar of 'N' & incoming wave) -->
+  <path d="M34 84V42C34 32.0589 42.0589 24 52 24C61.9411 24 70 32.0589 70 42V48" 
+        stroke="url(#waveCyanIndigo)" 
+        stroke-width="9" 
+        stroke-linecap="round" 
+        stroke-linejoin="round"
+        filter="url(#softGlow)"/>
+
+  <!-- Right Dynamic Arc (Forms right pillar of 'N' & outgoing wave, intersecting diagonally) -->
+  <path d="M86 36V78C86 87.9411 77.9411 96 68 96C58.0589 96 50 87.9411 50 78V72" 
+        stroke="url(#waveRoseAmber)" 
+        stroke-width="9" 
+        stroke-linecap="round" 
+        stroke-linejoin="round"
+        filter="url(#softGlow)"/>
+
+  <!-- Central Nexus Star / Connection Spark -->
+  <circle cx="60" cy="60" r="12" fill="url(#coreGlow)"/>
+  <circle cx="60" cy="60" r="4" fill="#FFFFFF"/>
+  <circle cx="60" cy="60" r="2" fill="#22D3EE"/>
+</svg>

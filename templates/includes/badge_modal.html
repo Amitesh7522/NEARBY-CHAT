@@ -1,0 +1,85 @@
+{% load i18n static %}
+<!-- Global Community Badge Explanation Modal -->
+<div id="badge-explanation-modal" style="display: none; position: fixed; inset: 0; z-index: 1200; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px); align-items: center; justify-content: center; padding: var(--space-4);">
+  <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-xl); max-width: 420px; width: 100%; box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4); overflow: hidden; animation: modalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1); text-align: center; padding: var(--space-6) var(--space-5);">
+    
+    <!-- Badge Emoji Icon -->
+    <div id="badge-modal-emoji" style="width: 60px; height: 60px; border-radius: var(--radius-xl); background: rgba(99, 102, 241, 0.15); display: flex; align-items: center; justify-content: center; font-size: 32px; margin: 0 auto var(--space-3);">
+      🌱
+    </div>
+
+    <!-- Badge Title -->
+    <h3 id="badge-modal-title" style="font-size: var(--text-lg); margin-bottom: var(--space-2); color: var(--text-primary);">
+      {% trans "Community Badge" %}
+    </h3>
+
+    <!-- Badge Description -->
+    <p id="badge-modal-desc" style="font-size: var(--text-sm); color: var(--text-muted); line-height: 1.4; margin-bottom: var(--space-5);">
+      {% trans "This badge reflects active participation and community contribution on Nearby Chat." %}
+    </p>
+
+    <div style="background: var(--bg-subtle); padding: var(--space-3); border-radius: var(--radius-md); font-size: 11px; color: var(--text-muted); margin-bottom: var(--space-5);">
+      🔒 {% trans "Community badges represent social activity and standing, not identity verification." %}
+    </div>
+
+    <button type="button" onclick="closeBadgeModal()" class="btn btn-primary btn-sm" style="width: 100%;">
+      {% trans "Got it" %}
+    </button>
+  </div>
+</div>
+
+<script>
+  const BADGE_METADATA = {
+    'new_member': {
+      'emoji': '🌱',
+      'title': "{% trans 'New Member' %}",
+      'desc': "{% trans 'Welcome to Nearby Chat! This badge is awarded to newer members of our community.' %}"
+    },
+    'active_member': {
+      'emoji': '✨',
+      'title': "{% trans 'Active Member' %}",
+      'desc': "{% trans 'This badge reflects regular participation and active conversation on Nearby Chat.' %}"
+    },
+    'connector': {
+      'emoji': '🤝',
+      'title': "{% trans 'Connector' %}",
+      'desc': "{% trans 'This badge reflects successful participation in bringing genuine friends to grow the Nearby Chat community.' %}"
+    },
+    'trusted_member': {
+      'emoji': '⭐',
+      'title': "{% trans 'Trusted Member' %}",
+      'desc': "{% trans 'This badge reflects sustained positive participation, high conversation ratings, and trusted standing in the community.' %}"
+    }
+  };
+
+  function openBadgeModal(badgeKey) {
+    const modal = document.getElementById('badge-explanation-modal');
+    const emojiEl = document.getElementById('badge-modal-emoji');
+    const titleEl = document.getElementById('badge-modal-title');
+    const descEl = document.getElementById('badge-modal-desc');
+
+    const meta = BADGE_METADATA[badgeKey] || BADGE_METADATA['new_member'];
+
+    if (emojiEl) emojiEl.textContent = meta.emoji;
+    if (titleEl) titleEl.textContent = meta.title;
+    if (descEl) descEl.textContent = meta.desc;
+
+    if (modal) {
+      modal.style.display = 'flex';
+    }
+  }
+
+  function closeBadgeModal() {
+    const modal = document.getElementById('badge-explanation-modal');
+    if (modal) {
+      modal.style.display = 'none';
+    }
+  }
+
+  document.addEventListener('click', (e) => {
+    const modal = document.getElementById('badge-explanation-modal');
+    if (modal && e.target === modal) {
+      closeBadgeModal();
+    }
+  });
+</script>

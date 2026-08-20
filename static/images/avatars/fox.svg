@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%">
+  <defs>
+    <linearGradient id="foxBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF6B4A"/>
+      <stop offset="100%" stop-color="#D9381E"/>
+    </linearGradient>
+    <linearGradient id="foxEars" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFA07A"/>
+      <stop offset="100%" stop-color="#FF6B4A"/>
+    </linearGradient>
+    <linearGradient id="hpGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#22D3EE"/>
+      <stop offset="100%" stop-color="#0284C7"/>
+    </linearGradient>
+  </defs>
+  <!-- Background Circle -->
+  <circle cx="50" cy="50" r="48" fill="#FFF1EE"/>
+  
+  <!-- Ears -->
+  <polygon points="20,40 32,15 44,35" fill="url(#foxBg)"/>
+  <polygon points="24,38 32,20 40,35" fill="#FFE4D6"/>
+  <polygon points="80,40 68,15 56,35" fill="url(#foxBg)"/>
+  <polygon points="76,38 68,20 60,35" fill="#FFE4D6"/>
+
+  <!-- Head -->
+  <ellipse cx="50" cy="56" rx="34" ry="30" fill="url(#foxBg)"/>
+
+  <!-- Cheeks / White Fur -->
+  <path d="M18 56 Q30 76 50 82 Q70 76 82 56 Q72 50 50 56 Q28 50 18 56 Z" fill="#FFFFFF"/>
+
+  <!-- Eyes -->
+  <ellipse cx="36" cy="48" rx="4" ry="5" fill="#1E293B"/>
+  <circle cx="37.5" cy="46.5" r="1.5" fill="#FFFFFF"/>
+  <ellipse cx="64" cy="48" rx="4" ry="5" fill="#1E293B"/>
+  <circle cx="65.5" cy="46.5" r="1.5" fill="#FFFFFF"/>
+
+  <!-- Nose & Smile -->
+  <polygon points="46,62 54,62 50,66" fill="#1E293B"/>
+  <path d="M46 68 Q50 72 54 68" stroke="#1E293B" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+
+  <!-- Headphones -->
+  <path d="M16 52 C16 28 84 28 84 52" fill="none" stroke="url(#hpGrad)" stroke-width="5" stroke-linecap="round"/>
+  <rect x="12" y="44" width="8" height="18" rx="4" fill="url(#hpGrad)"/>
+  <rect x="80" y="44" width="8" height="18" rx="4" fill="url(#hpGrad)"/>
+</svg>

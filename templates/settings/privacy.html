@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% load i18n static %}
+
+{% block title %}{% trans "Privacy Settings" %} — Nearby Chat{% endblock %}
+
+{% block content %}
+<div style="max-width: 540px; margin: 0 auto;">
+  <div class="card">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-5);">
+      <h2>{% trans "Privacy & Visibility" %}</h2>
+      <a href="{% url 'core:settings' %}" class="btn btn-sm btn-secondary">{% trans "Back" %}</a>
+    </div>
+
+    <form method="post">
+      {% csrf_token %}
+
+      <div class="checkbox-group" style="padding: var(--space-3) 0; border-bottom: 1px solid var(--border-color);">
+        <input type="checkbox" id="show_online_status" name="show_online_status" class="checkbox-field" {% if profile.show_online_status %}checked{% endif %}>
+        <div>
+          <label class="form-label" style="font-weight: 600; cursor: pointer;" for="show_online_status">
+            {% trans "Show Online Presence" %}
+          </label>
+          <p style="font-size: var(--text-xs); color: var(--text-muted); margin-top: 2px;">
+            {% trans "When enabled, other users can see when you are active on Nearby Chat." %}
+          </p>
+        </div>
+      </div>
+
+      <div class="checkbox-group" style="padding: var(--space-3) 0;">
+        <input type="checkbox" id="allow_random_chat" name="allow_random_chat" class="checkbox-field" {% if profile.allow_random_chat %}checked{% endif %}>
+        <div>
+          <label class="form-label" style="font-weight: 600; cursor: pointer;" for="allow_random_chat">
+            {% trans "Allow Random Chat Matching" %}
+          </label>
+          <p style="font-size: var(--text-xs); color: var(--text-muted); margin-top: 2px;">
+            {% trans "Allow the matchmaking algorithm to connect you with nearby users in Random Chat." %}
+          </p>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: var(--space-5);">
+        {% trans "Save Privacy Settings" %}
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

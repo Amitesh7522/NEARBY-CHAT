@@ -1,0 +1,20 @@
+# ==============================================================================
+# NEARBY CHAT — PRODUCTION PYTHON REQUIREMENTS
+# ==============================================================================
+
+Django>=5.0.0
+daphne>=4.1.2
+channels>=4.1.0
+channels-redis>=4.2.0
+djangorestframework>=3.15.0
+Pillow>=10.4.0
+python-dotenv>=1.0.1
+psycopg2-binary>=2.9.9
+dj-database-url>=2.2.0
+whitenoise>=6.7.0
+redis>=5.0.8
+celery>=5.4.0
+pytest>=8.3.2
+pytest-django>=4.8.0
+pytest-asyncio>=0.23.8
+gunicorn>=22.0.0

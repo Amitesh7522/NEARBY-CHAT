@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% load i18n static %}
+
+{% block title %}{% trans "Terms of Use" %} — Nearby Chat{% endblock %}
+
+{% block content %}
+<div style="max-width: 760px; margin: 0 auto;">
+  <div class="card" style="padding: var(--space-6) var(--space-8);">
+    
+    <div style="margin-bottom: var(--space-6); border-bottom: 1px solid var(--border-color); padding-bottom: var(--space-4);">
+      <h1>{% trans "Terms of Use" %}</h1>
+      <p style="font-size: var(--text-xs); color: var(--text-muted); margin-top: 4px;">
+        {% trans "Last updated: August 20, 2026" %} &bull; {% trans "Effective Date: August 20, 2026" %}
+      </p>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: var(--space-5); line-height: 1.6; font-size: var(--text-sm); color: var(--text-secondary);">
+      
+      <section>
+        <h3 style="color: var(--text-primary); margin-bottom: var(--space-2);">1. Agreement to Terms</h3>
+        <p>
+          By creating an account, accessing, or using Nearby Chat ("Platform", "we", "us", or "our"), you agree to be bound by these Terms of Use ("Terms") and our Privacy Policy. If you do not agree to these Terms, you must not access or use the Platform.
+        </p>
+      </section>
+
+      <section>
+        <h3 style="color: var(--text-primary); margin-bottom: var(--space-2);">2. Eligibility & Account Security</h3>
+        <p>
+          You must be at least 18 years of age (or the legal age of majority in your jurisdiction) to use Nearby Chat. You are responsible for safeguarding your login credentials and for all activities that occur under your account. You agree to notify us immediately of any unauthorized use or security breach.
+        </p>
+      </section>
+
+      <section>
+        <h3 style="color: var(--text-primary); margin-bottom: var(--space-2);">3. Community Guidelines & Prohibited Conduct</h3>
+        <p>To preserve a safe, welcoming, and respectful environment, you expressly agree NOT to:</p>
+        <ul style="list-style: disc; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+          <li>Harass, stalk, intimidate, threaten, bully, or defame any person.</li>
+          <li>Use abusive language, profanity, slurs, or toxic acronyms in private or room chats.</li>
+          <li>Distribute unsolicited commercial advertising, spam, chain letters, or pyramid schemes.</li>
+          <li>Transmit sexually explicit, pornographic, violent, or obscene content.</li>
+          <li>Engage in hate speech, discrimination, or incite violence against individuals or groups.</li>
+          <li>Impersonate any person, brand, or entity, or provide deceptive information.</li>
+          <li>Reverse engineer, scrape, DDoS, or attempt to compromise server infrastructure.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h3 style="color: var(--text-primary); margin-bottom: var(--space-2);">4. Content Safety, Reporting & Moderation</h3>
+        <p>
+          Nearby Chat provides automated content moderation filters, user blocking, and incident reporting tools. Our moderation team actively reviews reported users, messages, and community rooms. We reserve the right to issue warnings, remove violating content, temporarily suspend, or permanently terminate accounts found in violation of these Terms without prior notice.
+        </p>
+      </section>
+
+      <section>
+        <h3 style="color: var(--text-primary); margin-bottom: var(--space-2);">5. Disclaimers & Limitation of Liability</h3>
+        <p>
+          Nearby Chat is provided on an "AS IS" and "AS AVAILABLE" basis without warranties of any kind, whether express or implied. Nearby Chat does not endorse or guarantee the veracity of user statements in private or room chats. To the maximum extent permitted by applicable law, Nearby Chat shall not be liable for any indirect, incidental, punitive, or consequential damages arising out of your use of the service.
+        </p>
+      </section>
+
+      <section>
+        <h3 style="color: var(--text-primary); margin-bottom: var(--space-2);">6. Governing Law & Dispute Resolution</h3>
+        <p>
+          These Terms are governed by and construed in accordance with applicable laws, and courts having competent jurisdiction shall resolve any disputes arising from or relating to the service.
+        </p>
+      </section>
+
+      <section>
+        <h3 style="color: var(--text-primary); margin-bottom: var(--space-2);">7. Contact & Legal Notices</h3>
+        <p>
+          For legal notices, compliance queries, or policy questions, please contact our support team at:
+        </p>
+        <div style="background-color: var(--bg-subtle); padding: var(--space-4); border-radius: var(--radius-md); margin-top: 8px; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 6px;">
+          <div><strong>Support & Legal Inquiries:</strong> Nearby Chat Team</div>
+          <div><strong>Email:</strong> <a href="mailto:nearbychat.support@gmail.com" style="color: var(--primary); text-decoration: none; font-weight: 700;">nearbychat.support@gmail.com</a></div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

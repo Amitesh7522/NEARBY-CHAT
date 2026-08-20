@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bearBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ECFDF5"/>
+      <stop offset="100%" stop-color="#A7F3D0"/>
+    </linearGradient>
+    <linearGradient id="bearFur" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8D5B4C"/>
+      <stop offset="100%" stop-color="#5C382A"/>
+    </linearGradient>
+    <linearGradient id="beanieGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F43F5E"/>
+      <stop offset="100%" stop-color="#E11D48"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <circle cx="50" cy="50" r="48" fill="url(#bearBg)"/>
+
+  <!-- Ears -->
+  <circle cx="26" cy="30" r="10" fill="url(#bearFur)"/>
+  <circle cx="26" cy="30" r="5" fill="#DDB7AB"/>
+  <circle cx="74" cy="30" r="10" fill="url(#bearFur)"/>
+  <circle cx="74" cy="30" r="5" fill="#DDB7AB"/>
+
+  <!-- Head -->
+  <circle cx="50" cy="56" r="30" fill="url(#bearFur)"/>
+
+  <!-- Beanie Cap -->
+  <ellipse cx="50" cy="34" rx="26" ry="14" fill="url(#beanieGrad)"/>
+  <rect x="22" y="32" width="56" height="8" rx="4" fill="#BE123C"/>
+  <circle cx="50" cy="20" r="6" fill="#F8FAFC"/>
+
+  <!-- Muzzle -->
+  <ellipse cx="50" cy="64" rx="14" ry="11" fill="#E2C9BF"/>
+
+  <!-- Eyes -->
+  <circle cx="37" cy="52" r="3.5" fill="#1E293B"/>
+  <circle cx="38" cy="51" r="1" fill="#FFFFFF"/>
+  <circle cx="63" cy="52" r="3.5" fill="#1E293B"/>
+  <circle cx="64" cy="51" r="1" fill="#FFFFFF"/>
+
+  <!-- Nose & Smile -->
+  <ellipse cx="50" cy="62" rx="5" ry="4" fill="#1E293B"/>
+  <path d="M46 67 Q50 70 54 67" stroke="#1E293B" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+</svg>

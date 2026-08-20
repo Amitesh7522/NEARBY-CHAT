@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+{% load i18n static %}
+
+{% block title %}{% trans "Edit Profile" %} — Nearby Chat{% endblock %}
+
+{% block content %}
+<div style="max-width: 540px; margin: 0 auto;">
+  <div class="card">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-5);">
+      <h2>{% trans "Edit Profile" %}</h2>
+      <a href="{% url 'accounts:profile' %}" class="btn btn-sm btn-secondary">{% trans "Cancel" %}</a>
+    </div>
+
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      {{ form.avatar_preset }}
+
+      <!-- Current Avatar Live Preview & Cartoon Picker -->
+      <div style="text-align: center; margin-bottom: var(--space-6); background: var(--bg-card); padding: var(--space-4); border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
+        <div style="position:relative; display:inline-block; margin-bottom: var(--space-3);">
+          <img id="avatar-preview" src="{{ profile.get_avatar_url }}" alt="Avatar" class="avatar avatar-xl" style="border: 3px solid var(--primary); box-shadow: 0 8px 24px rgba(99, 102, 241, 0.25);">
+        </div>
+
+        <div style="font-size: var(--text-sm); font-weight: 700; color: var(--text-primary); margin-bottom: var(--space-2);">
+          {% trans "Choose a Cartoon Avatar" %}
+        </div>
+        <p style="font-size: var(--text-xs); color: var(--text-muted); margin-bottom: var(--space-3);">
+          {% trans "Pick a fun avatar for privacy, or upload your own photo below." %}
+        </p>
+
+        <!-- Cartoon Presets Grid -->
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-2); max-width: 320px; margin: 0 auto var(--space-4);">
+          {% for preset, name in preset_avatars %}
+            <button type="button" 
+                    onclick="selectAvatarPreset('{{ preset }}')" 
+                    id="preset-btn-{{ preset }}"
+                    class="preset-avatar-btn {% if profile.avatar_preset == preset and not profile.avatar %}active{% endif %}"
+                    style="background: transparent; border: 2px solid {% if profile.avatar_preset == preset and not profile.avatar %}var(--primary){% else %}transparent{% endif %}; border-radius: 50%; padding: 3px; cursor: pointer; transition: all 0.2s ease; outline: none;"
+                    title="{{ name }}">
+              <img src="{% static 'images/avatars/' %}{{ preset }}.svg" alt="{{ name }}" style="width: 52px; height: 52px; border-radius: 50%; display: block;">
+            </button>
+          {% endfor %}
+        </div>
+
+        <!-- Custom Upload Accordion / Input -->
+        <div style="border-top: 1px dashed var(--border-color); padding-top: var(--space-3); margin-top: var(--space-2);">
+          <label class="form-label" style="font-size:var(--text-xs); margin-bottom: 6px;">
+            {% trans "Or Upload Custom Photo" %}
+          </label>
+          <div style="max-width: 280px; margin: 0 auto;">
+            {{ form.avatar }}
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">{% trans "Display Name" %}</label>
+        {{ form.display_name }}
+      </div>
+
+      <!-- Interests / Passions Multi-Selector -->
+      <div class="form-group" style="background: var(--bg-card); padding: var(--space-3); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+        <label class="form-label" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: var(--space-2);">
+          <span>{% trans "Your Interests & Passions" %}</span>
+          <span style="font-size:var(--text-xs); color:var(--primary); font-weight:normal;">{% trans "Tap to select / unselect" %}</span>
+        </label>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+          {% for interest in all_interests %}
+            <label class="interest-pill" style="cursor: pointer; user-select: none;">
+              <input type="checkbox" name="interests" value="{{ interest.id }}" {% if interest in profile.interests.all %}checked{% endif %} style="display:none;" onchange="toggleInterestBadge(this)">
+              <span class="badge" style="padding: 6px 12px; font-size: var(--text-xs); border: 1px solid {% if interest in profile.interests.all %}var(--primary){% else %}var(--border-color){% endif %}; background: {% if interest in profile.interests.all %}var(--primary){% else %}var(--bg-surface){% endif %}; color: {% if interest in profile.interests.all %}#FFFFFF{% else %}var(--text-secondary){% endif %}; transition: all 0.2s ease; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px;">
+                <span>{{ interest.emoji }}</span>
+                <span>{{ interest.name }}</span>
+              </span>
+            </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">{% trans "Bio" %}</label>
+        {{ form.bio }}
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">
+        <div class="form-group">
+          <label class="form-label">{% trans "Gender" %}</label>
+          {{ form.gender }}
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">{% trans "Date of Birth" %}</label>
+          {{ form.date_of_birth }}
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">{% trans "Location / City" %}</label>
+        {{ form.location_name }}
+      </div>
+
+      <hr style="border: 0; border-top: 1px solid var(--border-color); margin: var(--space-4) 0;">
+
+      <div class="checkbox-group">
+        {{ form.show_online_status }}
+        <label class="form-label" style="font-weight: 500; cursor: pointer;" for="{{ form.show_online_status.id_for_label }}">
+          {% trans "Show my online presence to others" %}
+        </label>
+      </div>
+
+      <div class="checkbox-group">
+        {{ form.allow_random_chat }}
+        <label class="form-label" style="font-weight: 500; cursor: pointer;" for="{{ form.allow_random_chat.id_for_label }}">
+          {% trans "Allow discovery in Random Chat queue" %}
+        </label>
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: var(--space-4);">
+        {% trans "Save Changes" %}
+      </button>
+    </form>
+  </div>
+</div>
+
+<script>
+  function selectAvatarPreset(preset) {
+    const input = document.getElementById('id_avatar_preset');
+    if (input) {
+      input.value = preset;
+    }
+    
+    // Update live preview image
+    const preview = document.getElementById('avatar-preview');
+    if (preview) {
+      preview.src = `/static/images/avatars/${preset}.svg`;
+    }
+
+    // Update active ring highlighting
+    document.querySelectorAll('.preset-avatar-btn').forEach(btn => {
+      btn.style.borderColor = 'transparent';
+      btn.style.transform = 'scale(1)';
+    });
+
+    const activeBtn = document.getElementById(`preset-btn-${preset}`);
+    if (activeBtn) {
+      activeBtn.style.borderColor = 'var(--primary)';
+      activeBtn.style.transform = 'scale(1.1)';
+    }
+  }
+
+  function toggleInterestBadge(checkbox) {
+    const badge = checkbox.nextElementSibling;
+    if (checkbox.checked) {
+      badge.style.background = 'var(--primary)';
+      badge.style.color = '#FFFFFF';
+      badge.style.borderColor = 'var(--primary)';
+      badge.style.boxShadow = '0 2px 8px rgba(99, 102, 241, 0.35)';
+    } else {
+      badge.style.background = 'var(--bg-surface)';
+      badge.style.color = 'var(--text-secondary)';
+      badge.style.borderColor = 'var(--border-color)';
+      badge.style.boxShadow = 'none';
+    }
+  }
+</script>
+{% endblock %}

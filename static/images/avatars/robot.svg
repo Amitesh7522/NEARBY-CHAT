@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%">
+  <defs>
+    <linearGradient id="botBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F172A"/>
+      <stop offset="100%" stop-color="#1E293B"/>
+    </linearGradient>
+    <linearGradient id="botHead" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="100%" stop-color="#0284C7"/>
+    </linearGradient>
+    <linearGradient id="botVisor" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0B0F19"/>
+      <stop offset="100%" stop-color="#1E293B"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <circle cx="50" cy="50" r="48" fill="url(#botBg)"/>
+
+  <!-- Antenna -->
+  <line x1="50" y1="20" x2="50" y2="30" stroke="#38BDF8" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="50" cy="18" r="5" fill="#F43F5E"/>
+  <circle cx="50" cy="18" r="8" stroke="#F43F5E" stroke-width="1" opacity="0.4"/>
+
+  <!-- Ears / Bolts -->
+  <rect x="14" y="44" width="8" height="16" rx="3" fill="#64748B"/>
+  <rect x="78" y="44" width="8" height="16" rx="3" fill="#64748B"/>
+
+  <!-- Head -->
+  <rect x="20" y="30" width="60" height="48" rx="16" fill="url(#botHead)" stroke="#7DD3FC" stroke-width="2"/>
+
+  <!-- Visor Screen -->
+  <rect x="26" y="38" width="48" height="26" rx="10" fill="url(#botVisor)"/>
+
+  <!-- Pixel Eyes -->
+  <circle cx="38" cy="50" r="5" fill="#22D3EE"/>
+  <circle cx="38" cy="50" r="2" fill="#FFFFFF"/>
+  <circle cx="62" cy="50" r="5" fill="#22D3EE"/>
+  <circle cx="62" cy="50" r="2" fill="#FFFFFF"/>
+
+  <!-- Cute Digital Smile -->
+  <path d="M44 68 Q50 72 56 68" stroke="#0284C7" stroke-width="3" fill="none" stroke-linecap="round"/>
+</svg>

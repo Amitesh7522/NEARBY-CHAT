@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+{% load i18n static %}
+
+{% block title %}{% trans "Privacy Policy" %} — Nearby Chat{% endblock %}
+
+{% block content %}
+<div style="max-width: 760px; margin: 0 auto;">
+  <div class="card" style="padding: var(--space-6) var(--space-8);">
+    
+    <div style="margin-bottom: var(--space-6); border-bottom: 1px solid var(--border-color); padding-bottom: var(--space-4);">
+      <h1>{% trans "Privacy Policy" %}</h1>
+      <p style="font-size: var(--text-xs); color: var(--text-muted); margin-top: 4px;">
+        {% trans "Last updated: August 20, 2026" %} &bull; {% trans "Effective Date: August 20, 2026" %}
+      </p>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: var(--space-5); line-height: 1.6; font-size: var(--text-sm); color: var(--text-secondary);">
+      
+      <section>
+        <h3 style="color: var(--text-primary); margin-bottom: var(--space-2);">1. Introduction & Scope</h3>
+        <p>
+          Welcome to Nearby Chat ("Platform", "we", "us", or "our"). We are committed to protecting your privacy and ensuring complete transparency in how your information is collected, processed, and maintained. This Privacy Policy governs your use of Nearby Chat web applications, messaging surfaces, and related services.
+        </p>
+      </section>
+
+      <section>
+        <h3 style="color: var(--text-primary); margin-bottom: var(--space-2);">2. Information We Collect</h3>
+        <ul style="list-style: disc; padding-left: 20px; display: flex; flex-direction: column; gap: 8px;">
+          <li><strong>Account Registration Details:</strong> Username, email address, hashed password, and optional phone number.</li>
+          <li><strong>Profile Information:</strong> Public display name, avatar photograph, self-authored bio, gender, date of birth, and city/locality.</li>
+          <li><strong>Chat & Messaging Data:</strong> Content of direct messages, community room messages, message timestamps, delivery statuses, and read receipts.</li>
+          <li><strong>Presence & Discovery Metadata:</strong> Online activity status, last active timestamp, and matchmaking discovery preferences.</li>
+          <li><strong>Technical & Device Data:</strong> IP address, user-agent string, session tokens, operating system, and connection logs.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h3 style="color: var(--text-primary); margin-bottom: var(--space-2);">3. How We Use Your Information</h3>
+        <p>Your data is processed strictly for the following purposes:</p>
+        <ul style="list-style: disc; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+          <li>Authenticating your access and maintaining active secure sessions.</li>
+          <li>Delivering real-time messages and notifications over authenticated WebSocket channels.</li>
+          <li>Matching you with active eligible users in Random Chat when enabled.</li>
+          <li>Enforcing user blocking, abuse reporting, and automated content moderation safety guidelines.</li>
+          <li>Preventing spam, bot intrusions, fraud, and unlawful activity.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h3 style="color: var(--text-primary); margin-bottom: var(--space-2);">4. Data Storage, Security & Retention</h3>
+        <p>
+          All application data is securely persisted utilizing encrypted database connections (TLS/SSL). Passwords are cryptographically hashed using PBKDF2/Argon2 algorithms. We retain your chat history and account data as long as your account remains active. Upon invoking the <strong>Delete Account</strong> feature, your profile and conversation records are permanently expunged from primary production datastores within 30 days.
+        </p>
+      </section>
+
+      <section>
+        <h3 style="color: var(--text-primary); margin-bottom: var(--space-2);">5. Third-Party Integrations & Service Providers</h3>
+        <p>
+          We may employ vetted third-party vendors solely for technical operational infrastructure (such as SMS OTP gateways, transactional email services, and cloud hosting). We do not sell, rent, or trade your personal information or chat logs to advertisers or data brokers.
+        </p>
+      </section>
+
+      <section>
+        <h3 style="color: var(--text-primary); margin-bottom: var(--space-2);">6. User Rights & Account Deletion</h3>
+        <p>
+          You have full sovereignty over your data. At any time, you can:
+        </p>
+        <ul style="list-style: disc; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+          <li>Access, modify, or update your profile from the Settings interface.</li>
+          <li>Toggle your online presence visibility or opt out of Random Chat matchmaking.</li>
+          <li>Block users or submit content violation reports.</li>
+          <li>Permanently delete your account and associated records via <a href="{% url 'accounts:delete_account' %}">Account Deletion</a>.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h3 style="color: var(--text-primary); margin-bottom: var(--space-2);">7. Grievance & Contact Information</h3>
+        <p>
+          If you have any questions, concerns, or requests regarding this Privacy Policy or your personal data, please contact our support and grievance team:
+        </p>
+        <div style="background-color: var(--bg-subtle); padding: var(--space-4); border-radius: var(--radius-md); margin-top: 8px; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 6px;">
+          <div><strong>Team:</strong> Grievance & Privacy Support, Nearby Chat</div>
+          <div><strong>Email:</strong> <a href="mailto:nearbychat.support@gmail.com" style="color: var(--primary); text-decoration: none; font-weight: 700;">nearbychat.support@gmail.com</a></div>
+          <div><strong>Support Hours:</strong> Monday – Saturday, 9:00 AM – 6:00 PM IST</div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

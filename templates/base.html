@@ -1,0 +1,75 @@
+{% load i18n static %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE|default:'en' }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>{% block title %}Nearby Chat — Realtime Social & Discovery{% endblock %}</title>
+  
+  <link rel="icon" type="image/svg+xml" href="{% static 'images/icon.svg' %}">
+  <link rel="manifest" href="{% static 'manifest.webmanifest' %}">
+  <meta name="theme-color" content="#6366F1">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Nearby Chat">
+  <link rel="apple-touch-icon" href="{% static 'images/icon.svg' %}">
+  
+  <!-- CSS Stylesheets -->
+  <link rel="stylesheet" href="{% static 'css/tokens.css' %}">
+  <link rel="stylesheet" href="{% static 'css/base.css' %}">
+  <link rel="stylesheet" href="{% static 'css/components.css' %}">
+  <link rel="stylesheet" href="{% static 'css/layout.css' %}">
+  <link rel="stylesheet" href="{% static 'css/chat.css' %}">
+  <link rel="stylesheet" href="{% static 'css/rooms.css' %}">
+  
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <div class="app-container">
+    {% include 'includes/header.html' %}
+    
+    <!-- Hamburger Side Drawer Menu -->
+    {% include 'includes/drawer_menu.html' %}
+
+    <!-- Main Content Area -->
+    <main class="app-main">
+      {% block content %}{% endblock %}
+    </main>
+
+    <!-- Mobile Bottom Navigation (Home | Chats | Rooms | Profile) -->
+    {% if user.is_authenticated %}
+      {% include 'includes/bottom_nav.html' %}
+    {% endif %}
+
+    <!-- Report & Action Modals -->
+    {% include 'includes/modal_dialog.html' %}
+    {% include 'includes/match_modal.html' %}
+    {% include 'includes/badge_modal.html' %}
+
+    <!-- Toast Notifications Container -->
+    <div id="toast-container" class="toast-container">
+      {% if messages %}
+        {% for message in messages %}
+          <div class="toast toast-{{ message.tags }}">
+            <span>{{ message }}</span>
+            <button onclick="this.parentElement.remove()" style="opacity:0.6;font-size:16px;">&times;</button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Global Scripts -->
+  <script>
+    window.CURRENT_USER_ID = "{{ request.user.id|default:'' }}";
+    window.CURRENT_USERNAME = "{{ request.user.username|default:'' }}";
+  </script>
+  <script src="{% static 'js/websocket.js' %}?v=3.0"></script>
+  <script src="{% static 'js/moderation.js' %}?v=3.0"></script>
+  <script src="{% static 'js/location.js' %}?v=3.0"></script>
+  <script src="{% static 'js/pwa.js' %}?v=3.0"></script>
+  <script src="{% static 'js/app.js' %}?v=3.0"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

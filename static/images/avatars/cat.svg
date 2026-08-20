@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%">
+  <defs>
+    <linearGradient id="catBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FDF4FF"/>
+      <stop offset="100%" stop-color="#F5D0FE"/>
+    </linearGradient>
+    <linearGradient id="catFur" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="100%" stop-color="#6366F1"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <circle cx="50" cy="50" r="48" fill="url(#catBg)"/>
+
+  <!-- Ears -->
+  <polygon points="18,44 26,16 46,34" fill="url(#catFur)"/>
+  <polygon points="22,40 28,22 42,34" fill="#F472B6"/>
+  <polygon points="82,44 74,16 54,34" fill="url(#catFur)"/>
+  <polygon points="78,40 72,22 58,34" fill="#F472B6"/>
+
+  <!-- Head -->
+  <ellipse cx="50" cy="56" rx="34" ry="28" fill="url(#catFur)"/>
+
+  <!-- Muzzle -->
+  <ellipse cx="44" cy="64" rx="7" ry="5.5" fill="#FFFFFF"/>
+  <ellipse cx="56" cy="64" rx="7" ry="5.5" fill="#FFFFFF"/>
+
+  <!-- Big Sparkling Anime Eyes -->
+  <ellipse cx="34" cy="48" rx="7.5" ry="9" fill="#0F172A"/>
+  <ellipse cx="36" cy="46" rx="3" ry="4" fill="#22D3EE"/>
+  <circle cx="33" cy="44" r="2.5" fill="#FFFFFF"/>
+  <circle cx="36" cy="52" r="1.2" fill="#FFFFFF"/>
+
+  <ellipse cx="66" cy="48" rx="7.5" ry="9" fill="#0F172A"/>
+  <ellipse cx="64" cy="46" rx="3" ry="4" fill="#22D3EE"/>
+  <circle cx="67" cy="44" r="2.5" fill="#FFFFFF"/>
+  <circle cx="64" cy="52" r="1.2" fill="#FFFFFF"/>
+
+  <!-- Cute Nose & Mouth -->
+  <polygon points="47,60 53,60 50,63" fill="#F472B6"/>
+  <path d="M46 64 Q50 67 54 64" stroke="#0F172A" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+
+  <!-- Whiskers -->
+  <line x1="16" y1="58" x2="30" y2="60" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+  <line x1="14" y1="65" x2="29" y2="64" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+  <line x1="84" y1="58" x2="70" y2="60" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+  <line x1="86" y1="65" x2="71" y2="64" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+</svg>

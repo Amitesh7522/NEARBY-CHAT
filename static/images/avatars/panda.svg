@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%">
+  <defs>
+    <linearGradient id="pandaBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E0F2FE"/>
+      <stop offset="100%" stop-color="#BAE6FD"/>
+    </linearGradient>
+    <linearGradient id="shadesGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#EC4899"/>
+      <stop offset="50%" stop-color="#8B5CF6"/>
+      <stop offset="100%" stop-color="#3B82F6"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background Circle -->
+  <circle cx="50" cy="50" r="48" fill="url(#pandaBg)"/>
+
+  <!-- Ears -->
+  <circle cx="24" cy="28" r="13" fill="#1E293B"/>
+  <circle cx="76" cy="28" r="13" fill="#1E293B"/>
+  <circle cx="24" cy="28" r="6" fill="#334155"/>
+  <circle cx="76" cy="28" r="6" fill="#334155"/>
+
+  <!-- Head -->
+  <ellipse cx="50" cy="56" rx="36" ry="32" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5"/>
+
+  <!-- Cheeks Blush -->
+  <circle cx="26" cy="62" r="5" fill="#FDA4AF" opacity="0.6"/>
+  <circle cx="74" cy="62" r="5" fill="#FDA4AF" opacity="0.6"/>
+
+  <!-- Nose & Smile -->
+  <ellipse cx="50" cy="62" rx="4.5" ry="3.5" fill="#1E293B"/>
+  <path d="M46 67 Q50 72 54 67" stroke="#1E293B" stroke-width="2" fill="none" stroke-linecap="round"/>
+
+  <!-- Cool Sunglasses -->
+  <!-- Left Lens -->
+  <rect x="22" y="44" width="24" height="15" rx="6" fill="url(#shadesGrad)"/>
+  <!-- Right Lens -->
+  <rect x="54" y="44" width="24" height="15" rx="6" fill="url(#shadesGrad)"/>
+  <!-- Bridge & Temples -->
+  <rect x="46" y="49" width="8" height="3" rx="1.5" fill="#0F172A"/>
+  <path d="M16 48 L22 48" stroke="#0F172A" stroke-width="3" stroke-linecap="round"/>
+  <path d="M78 48 L84 48" stroke="#0F172A" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- Sunglasses Reflection Lines -->
+  <line x1="26" y1="46" x2="30" y2="56" stroke="#FFFFFF" stroke-width="1.5" opacity="0.6" stroke-linecap="round"/>
+  <line x1="58" y1="46" x2="62" y2="56" stroke="#FFFFFF" stroke-width="1.5" opacity="0.6" stroke-linecap="round"/>
+</svg>

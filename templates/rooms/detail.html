@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+{% load i18n static %}
+
+{% block title %}{{ room.name }} — Nearby Chat{% endblock %}
+
+{% block content %}
+<div class="chat-window">
+  
+  <!-- Room Header -->
+  <div class="chat-header">
+    <div style="display: flex; align-items: center; gap: var(--space-3);">
+      <a href="{% url 'rooms:list' %}" class="btn-icon" aria-label="{% trans 'Back to rooms' %}">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+      </a>
+
+      <div class="chat-partner-info">
+        <div class="room-avatar" style="width:36px;height:36px;font-size:var(--text-sm);">
+          {{ room.name|slice:":1"|upper }}
+        </div>
+        <div class="chat-partner-details">
+          <h3>{{ room.name }}</h3>
+          <span>{{ room.member_count }} {% trans "members" %}{% if room.topic %} &bull; {{ room.topic }}{% endif %}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Room Options (Share, Leave & Report) -->
+    <div style="display: flex; align-items: center; gap: var(--space-2);">
+      <button type="button" onclick="shareRoom()" class="btn-icon" title="{% trans 'Share Room' %}" aria-label="{% trans 'Share Room' %}">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+      </button>
+
+      <button type="button" onclick="window.openReportModal({roomId: '{{ room.id }}'})" class="btn-icon" title="{% trans 'Report Room' %}">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+      </button>
+
+      <a href="{% url 'rooms:leave' room_id=room.id %}" class="btn btn-sm btn-secondary" style="color:var(--error);" title="{% trans 'Leave Room' %}">
+        {% trans "Leave" %}
+      </a>
+    </div>
+  </div>
+
+  <!-- Messages Stream -->
+  <div id="room-message-stream" class="message-stream">
+    {% for msg in initial_messages %}
+      <div class="message-bubble-row {% if msg.sender == user %}outgoing{% else %}incoming{% endif %} room-msg-item" data-message-id="{{ msg.id }}">
+        <div class="message-bubble">
+          {% if msg.sender != user %}
+            <div style="font-size:11px;font-weight:700;margin-bottom:2px;color:var(--primary);">
+              {{ msg.sender.profile.get_display_name|default:msg.sender.username }}
+            </div>
+          {% endif %}
+          <div class="message-text">{{ msg.content }}</div>
+          <div class="message-meta">
+            <span>{{ msg.created_at|date:"H:i" }}</span>
+          </div>
+        </div>
+      </div>
+    {% empty %}
+      <div class="empty-state" style="padding: var(--space-8) 0;">
+        <p>{% trans "No messages in this room yet. Start the conversation!" %}</p>
+      </div>
+    {% endfor %}
+  </div>
+
+  <!-- Composer Form -->
+  <form id="room-chat-form" class="chat-composer">
+    <input type="text" id="room-chat-input" class="chat-input" placeholder="{% trans 'Message room...' %}" autocomplete="off" required>
+    <button type="submit" class="btn-send" aria-label="{% trans 'Send' %}">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+    </button>
+  </form>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/rooms.js' %}?v=3.0"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    new RoomChatClient({
+      roomId: "{{ room.id }}",
+      currentUserId: "{{ user.id }}"
+    });
+  });
+
+  function shareRoom() {
+    const roomUrl = window.location.href;
+    if (navigator.share) {
+      navigator.share({
+        title: '{{ room.name }} — Nearby Chat',
+        text: "{% trans 'Join the live conversation in' %} {{ room.name }} on Nearby Chat!",
+        url: roomUrl
+      }).catch((err) => {
+        if (err.name !== 'AbortError') {
+          copyRoomLink(roomUrl);
+        }
+      });
+    } else {
+      copyRoomLink(roomUrl);
+    }
+  }
+
+  function copyRoomLink(url) {
+    navigator.clipboard.writeText(url).then(() => {
+      if (typeof window.showToast === 'function') {
+        window.showToast("{% trans 'Room link copied to clipboard!' %}", "success");
+      } else {
+        alert("{% trans 'Room link copied to clipboard!' %}");
+      }
+    }).catch(() => {
+      prompt("{% trans 'Room Link:' %}", url);
+    });
+  }
+</script>
+{% endblock %}

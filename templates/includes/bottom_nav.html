@@ -1,0 +1,29 @@
+{% load i18n static %}
+<nav class="bottom-nav" aria-label="{% trans 'Bottom Navigation' %}">
+  <!-- 1. Home -->
+  <a href="{% url 'core:home' %}" class="bottom-nav-item {% if request.resolver_match.view_name == 'core:home' %}active{% endif %}">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+    <span>{% trans "Home" %}</span>
+  </a>
+
+  <!-- 2. Chats -->
+  <a href="{% url 'chat:list' %}" class="bottom-nav-item {% if 'chat' in request.resolver_match.app_name %}active{% endif %}">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+    <span>{% trans "Chats" %}</span>
+    {% if total_unread_messages > 0 %}
+      <span class="nav-badge">{{ total_unread_messages }}</span>
+    {% endif %}
+  </a>
+
+  <!-- 3. Rooms -->
+  <a href="{% url 'rooms:list' %}" class="bottom-nav-item {% if 'rooms' in request.resolver_match.app_name %}active{% endif %}">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+    <span>{% trans "Rooms" %}</span>
+  </a>
+
+  <!-- 4. Profile -->
+  <a href="{% url 'accounts:profile' %}" class="bottom-nav-item {% if request.resolver_match.view_name == 'accounts:profile' %}active{% endif %}">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+    <span>{% trans "Profile" %}</span>
+  </a>
+</nav>

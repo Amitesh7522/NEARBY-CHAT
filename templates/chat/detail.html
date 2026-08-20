@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+{% load i18n static %}
+
+{% block title %}{{ other_profile.get_display_name|default:other_user.username }} — Nearby Chat{% endblock %}
+
+{% block content %}
+<div class="chat-window">
+  
+  <!-- Chat Header -->
+  <div class="chat-header">
+    <div style="display: flex; align-items: center; gap: var(--space-3);">
+      <a href="{% url 'chat:list' %}" class="btn-icon" aria-label="{% trans 'Back to chats' %}">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+      </a>
+
+      {% if other_user %}
+        <a href="{% url 'accounts:user_profile' username=other_user.username %}" class="chat-partner-info">
+          <div class="avatar-container">
+            <img src="{{ other_profile.get_avatar_url|default:'/static/images/default-avatar.svg' }}" alt="{{ other_user.username }}" class="avatar avatar-sm">
+            {% if other_profile.show_online_status %}
+              <span class="status-dot {% if other_profile.is_currently_online %}online{% else %}offline{% endif %}"></span>
+            {% endif %}
+          </div>
+          <div class="chat-partner-details">
+            <h3>{{ other_profile.get_display_name|default:other_user.username }}</h3>
+            {% if other_profile.show_online_status and other_profile.is_currently_online %}
+              <span class="online-text">{% trans "Online" %}</span>
+            {% else %}
+              <span>@{{ other_user.username }}</span>
+            {% endif %}
+          </div>
+        </a>
+      {% else %}
+        <div class="chat-partner-details">
+          <h3>{% trans "Direct Chat" %}</h3>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Actions Dropdown / Report & Block -->
+    {% if other_user %}
+      <div style="display: flex; align-items: center; gap: var(--space-1);">
+        <button type="button" onclick="window.openReportModal({username: '{{ other_user.username }}'})" class="btn-icon" title="{% trans 'Report' %}">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        </button>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Messages Stream -->
+  <div id="message-stream" class="message-stream">
+    <button id="load-more-btn" class="load-more-btn" style="display: {% if initial_messages|length >= 25 %}block{% else %}none{% endif %};">
+      {% trans "Load older messages" %}
+    </button>
+
+    {% for msg in initial_messages %}
+      <div class="message-bubble-row {% if msg.sender == user %}outgoing{% else %}incoming{% endif %}" data-message-id="{{ msg.id }}">
+        <div class="message-bubble">
+          <div class="message-text">{{ msg.content }}</div>
+          <div class="message-meta">
+            <span>{{ msg.created_at|date:"H:i" }}</span>
+            {% if msg.sender == user %}
+              <span class="status-tick">✓</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% empty %}
+      <div class="empty-state" style="padding: var(--space-8) 0;">
+        <p>{% trans "No messages yet. Send a friendly hello to start!" %}</p>
+      </div>
+    {% endfor %}
+  </div>
+
+  <!-- Typing Indicator -->
+  <div id="typing-indicator" class="typing-indicator">
+    <span>{{ other_profile.get_display_name|default:other_user.username }} {% trans "is typing" %}</span>
+    <span class="typing-dot"></span>
+    <span class="typing-dot"></span>
+    <span class="typing-dot"></span>
+  </div>
+
+  <!-- Composer Form -->
+  {% if is_blocked %}
+    <div style="background-color: var(--bg-subtle); color: var(--text-muted); padding: var(--space-4); text-align: center; font-size: var(--text-sm);">
+      {% trans "Messaging is disabled due to blocking settings." %}
+    </div>
+  {% else %}
+    <form id="chat-form" class="chat-composer">
+      <input type="text" id="chat-input" class="chat-input" placeholder="{% trans 'Type a message...' %}" autocomplete="off" required>
+      <button type="submit" class="btn-send" aria-label="{% trans 'Send Message' %}">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+      </button>
+    </form>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/chat.js' %}?v=3.0"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    new ChatClient({
+      conversationId: "{{ conversation.id }}",
+      currentUserId: "{{ user.id }}"
+    });
+  });
+</script>
+{% endblock %}

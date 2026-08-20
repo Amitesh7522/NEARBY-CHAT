@@ -1,0 +1,167 @@
+# Translation of Nearby Chat into Hindi
+msgid ""
+msgstr ""
+"Project-Id-Version: Nearby Chat 1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-08-20 08:00+0530\n"
+"PO-Revision-Date: 2026-08-20 08:00+0530\n"
+"Last-Translator: Nearby Chat Team\n"
+"Language-Team: Hindi\n"
+"Language: hi\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Home"
+msgstr "होम"
+
+msgid "Chats"
+msgstr "चैट्स"
+
+msgid "Rooms"
+msgstr "कमरे"
+
+msgid "Profile"
+msgstr "प्रोफ़ाइल"
+
+msgid "Settings"
+msgstr "सेटिंग्स"
+
+msgid "Messages"
+msgstr "संदेश"
+
+msgid "Help & Support"
+msgstr "सहायता और समर्थन"
+
+msgid "Privacy Policy"
+msgstr "गोपनीयता नीति"
+
+msgid "Terms of Use"
+msgstr "उपयोग की शर्तें"
+
+msgid "Log Out"
+msgstr "लॉग आउट"
+
+msgid "Log In"
+msgstr "लॉग इन करें"
+
+msgid "Sign In"
+msgstr "साइन इन करें"
+
+msgid "Create Account"
+msgstr "खाता बनाएं"
+
+msgid "Join Nearby Chat"
+msgstr "Nearby Chat से जुड़ें"
+
+msgid "Welcome Back"
+msgstr "वापसी पर स्वागत है"
+
+msgid "Connect with people nearby in real-time."
+msgstr "आस-पास के लोगों से रीयल-टाइम में जुड़ें।"
+
+msgid "Start Random Chat"
+msgstr "रैंडम चैट शुरू करें"
+
+msgid "Random Chat"
+msgstr "रैंडम चैट"
+
+msgid "Active Now"
+msgstr "अभी सक्रिय"
+
+msgid "Discover People"
+msgstr "लोगों को खोजें"
+
+msgid "Popular Rooms"
+msgstr "लोकप्रिय कमरे"
+
+msgid "Community Rooms"
+msgstr "कम्युनिटी कमरे"
+
+msgid "Create Room"
+msgstr "कमरा बनाएं"
+
+msgid "See All"
+msgstr "सभी देखें"
+
+msgid "Online"
+msgstr "ऑनलाइन"
+
+msgid "Message"
+msgstr "संदेश भेजें"
+
+msgid "Block User"
+msgstr "उपयोगकर्ता को ब्लॉक करें"
+
+msgid "Unblock User"
+msgstr "अनब्लॉक करें"
+
+msgid "Report"
+msgstr "रिपोर्ट करें"
+
+msgid "Edit Profile"
+msgstr "प्रोफ़ाइल संपादित करें"
+
+msgid "Delete Account"
+msgstr "खाता हटाएं"
+
+msgid "Blocked Users"
+msgstr "ब्लॉक किए गए उपयोगकर्ता"
+
+msgid "Privacy & Visibility"
+msgstr "गोपनीयता और दृश्यता"
+
+msgid "Notifications & Sound"
+msgstr "सूचनाएं और ध्वनि"
+
+msgid "Language / भाषा"
+msgstr "भाषा / Language"
+
+msgid "Save Changes"
+msgstr "बदलाव सहेजें"
+
+msgid "Searching for nearby people..."
+msgstr "आस-पास के लोगों को खोज रहे हैं..."
+
+msgid "Connecting you with an active user for an instant 1-on-1 chat."
+msgstr "त्वरित 1-ऑन-1 चैट के लिए आपको एक सक्रिय उपयोगकर्ता से जोड़ रहे हैं।"
+
+msgid "Match Found!"
+msgstr "साथी मिल गया!"
+
+msgid "Cancel"
+msgstr "रद्द करें"
+
+msgid "Try Again"
+msgstr "पुनः प्रयास करें"
+
+msgid "Type a message..."
+msgstr "संदेश लिखें..."
+
+msgid "Load older messages"
+msgstr "पुराने संदेश लोड करें"
+
+msgid "Good morning"
+msgstr "शुभ प्रभात"
+
+msgid "Good afternoon"
+msgstr "शुभ दोपहर"
+
+msgid "Good evening"
+msgstr "शुभ संध्या"
+
+msgid "You"
+msgstr "आप"
+
+msgid "members"
+msgstr "सदस्य"
+
+msgid "Join"
+msgstr "शामिल हों"
+
+msgid "Enter"
+msgstr "प्रवेश करें"
+
+msgid "Leave"
+msgstr "छोड़ें"

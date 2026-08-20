@@ -1,0 +1,48 @@
+{
+  "name": "Nearby Chat",
+  "short_name": "NearbyChat",
+  "description": "Connect with genuine people nearby in real-time.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0F172A",
+  "theme_color": "#6366F1",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/static/images/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/images/default-avatar.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/static/images/default-avatar.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Chats",
+      "url": "/chats/",
+      "description": "View your active conversations"
+    },
+    {
+      "name": "Live Radar",
+      "url": "/matching/radar/",
+      "description": "Discover people nearby"
+    },
+    {
+      "name": "Community Rooms",
+      "url": "/rooms/",
+      "description": "Join live public discussions"
+    }
+  ]
+}

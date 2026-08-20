@@ -1,0 +1,242 @@
+{% load i18n static %}
+<!-- Conversation Rating Modal Dialog -->
+<div id="rating-modal" style="display: none; position: fixed; inset: 0; z-index: 1200; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px); align-items: center; justify-content: center; padding: var(--space-4);">
+  <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-xl); max-width: 440px; width: 100%; box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4); overflow: hidden; animation: modalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);">
+    
+    <!-- Modal Header -->
+    <div style="padding: var(--space-4) var(--space-5); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+      <div>
+        <h3 style="font-size: var(--text-base); margin: 0; display: flex; align-items: center; gap: 6px;">
+          <span>⭐</span> {% trans "How was your conversation?" %}
+        </h3>
+        <p style="font-size: var(--text-xs); color: var(--text-muted); margin: 2px 0 0 0;">
+          {% trans "Your feedback helps keep Nearby Chat friendly and safe." %}
+        </p>
+      </div>
+      <button type="button" onclick="closeRatingModal()" class="btn-icon" style="border: none; background: transparent; cursor: pointer; color: var(--text-muted);">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+
+    <!-- Rating Form -->
+    <form id="rating-form" method="post" action="{% url 'chat:submit_rating' %}" style="padding: var(--space-5);">
+      {% csrf_token %}
+      <input type="hidden" name="conversation_id" id="rating-conversation-id" value="{{ unrated_conversation_id }}">
+      <input type="hidden" name="target_username" id="rating-target-username" value="{{ target_user.username }}">
+      <input type="hidden" name="score" id="rating-score-input" value="0">
+
+      <!-- Interactive 5-Star Row -->
+      <div style="display: flex; flex-direction: column; align-items: center; margin-bottom: var(--space-5);">
+        <div id="star-rating-row" style="display: flex; gap: 8px; font-size: 32px; cursor: pointer; user-select: none;">
+          <span class="star-btn" data-value="1">★</span>
+          <span class="star-btn" data-value="2">★</span>
+          <span class="star-btn" data-value="3">★</span>
+          <span class="star-btn" data-value="4">★</span>
+          <span class="star-btn" data-value="5">★</span>
+        </div>
+        <div id="star-rating-label" style="font-size: var(--text-xs); font-weight: 600; color: var(--text-muted); margin-top: 6px; min-height: 18px;">
+          {% trans "Tap a star to rate" %}
+        </div>
+      </div>
+
+      <!-- Optional Feedback Tags -->
+      <div style="margin-bottom: var(--space-5);">
+        <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
+          {% trans "Optional feedback tags" %}:
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+          <label class="tag-toggle-pill">
+            <input type="checkbox" name="tags" value="Friendly" style="display: none;">
+            <span>✨ {% trans "Friendly" %}</span>
+          </label>
+          <label class="tag-toggle-pill">
+            <input type="checkbox" name="tags" value="Respectful" style="display: none;">
+            <span>🤝 {% trans "Respectful" %}</span>
+          </label>
+          <label class="tag-toggle-pill">
+            <input type="checkbox" name="tags" value="Interesting" style="display: none;">
+            <span>💡 {% trans "Interesting" %}</span>
+          </label>
+          <label class="tag-toggle-pill">
+            <input type="checkbox" name="tags" value="Good conversation" style="display: none;">
+            <span>💬 {% trans "Good conversation" %}</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div style="display: flex; gap: var(--space-3); justify-content: flex-end;">
+        <button type="button" onclick="closeRatingModal()" class="btn btn-secondary btn-sm">
+          {% trans "Skip" %}
+        </button>
+        <button type="submit" id="btn-submit-rating" class="btn btn-primary btn-sm" disabled style="opacity: 0.5;">
+          {% trans "Submit" %}
+        </button>
+      </div>
+
+    </form>
+  </div>
+</div>
+
+<style>
+  .star-btn {
+    color: var(--border-color);
+    transition: color 0.15s ease, transform 0.15s ease;
+  }
+  .star-btn:hover {
+    transform: scale(1.2);
+  }
+  .star-btn.active {
+    color: #F59E0B;
+  }
+  .tag-toggle-pill {
+    padding: 6px 12px;
+    font-size: var(--text-xs);
+    font-weight: 600;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+    display: inline-flex;
+    align-items: center;
+  }
+  .tag-toggle-pill.selected {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+</style>
+
+<script>
+  let selectedScore = 0;
+  const ratingLabels = {
+    1: "{% trans 'Poor' %}",
+    2: "{% trans 'Fair' %}",
+    3: "{% trans 'Good' %}",
+    4: "{% trans 'Great' %}",
+    5: "{% trans 'Awesome!' %}"
+  };
+
+  function openRatingModal() {
+    const modal = document.getElementById('rating-modal');
+    if (modal) {
+      modal.style.display = 'flex';
+    }
+  }
+
+  function closeRatingModal() {
+    const modal = document.getElementById('rating-modal');
+    if (modal) {
+      modal.style.display = 'none';
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const starBtns = document.querySelectorAll('#star-rating-row .star-btn');
+    const scoreInput = document.getElementById('rating-score-input');
+    const scoreLabel = document.getElementById('star-rating-label');
+    const submitBtn = document.getElementById('btn-submit-rating');
+
+    starBtns.forEach(star => {
+      star.addEventListener('mouseenter', () => {
+        const val = parseInt(star.getAttribute('data-value'));
+        highlightStars(val);
+      });
+
+      star.addEventListener('click', () => {
+        selectedScore = parseInt(star.getAttribute('data-value'));
+        scoreInput.value = selectedScore;
+        highlightStars(selectedScore);
+        if (scoreLabel) scoreLabel.textContent = ratingLabels[selectedScore] || '';
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.style.opacity = '1';
+        }
+      });
+    });
+
+    const starRow = document.getElementById('star-rating-row');
+    if (starRow) {
+      starRow.addEventListener('mouseleave', () => {
+        highlightStars(selectedScore);
+        if (scoreLabel) {
+          scoreLabel.textContent = selectedScore > 0 ? (ratingLabels[selectedScore] || '') : "{% trans 'Tap a star to rate' %}";
+        }
+      });
+    }
+
+    function highlightStars(val) {
+      starBtns.forEach(s => {
+        const sVal = parseInt(s.getAttribute('data-value'));
+        if (sVal <= val) {
+          s.classList.add('active');
+        } else {
+          s.classList.remove('active');
+        }
+      });
+    }
+
+    // Toggle pill tag selection
+    const tagPills = document.querySelectorAll('.tag-toggle-pill');
+    tagPills.forEach(pill => {
+      const checkbox = pill.querySelector('input[type="checkbox"]');
+      pill.addEventListener('click', (e) => {
+        setTimeout(() => {
+          if (checkbox.checked) {
+            pill.classList.add('selected');
+          } else {
+            pill.classList.remove('selected');
+          }
+        }, 10);
+      });
+    });
+
+    // Close on backdrop click
+    const ratingModal = document.getElementById('rating-modal');
+    if (ratingModal) {
+      ratingModal.addEventListener('click', (e) => {
+        if (e.target === ratingModal) {
+          closeRatingModal();
+        }
+      });
+    }
+
+    // Handle AJAX form submit for instant feedback
+    const ratingForm = document.getElementById('rating-form');
+    if (ratingForm) {
+      ratingForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(ratingForm);
+        
+        fetch(ratingForm.action, {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+          }
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            closeRatingModal();
+            const rateCard = document.getElementById('rate-conversation-banner');
+            if (rateCard) {
+              rateCard.innerHTML = `<div style="text-align:center; width:100%; color:var(--success); font-size:var(--text-xs); font-weight:600; padding:var(--space-2);">✓ {% trans "Thank you! Your feedback has been recorded." %}</div>`;
+            }
+            if (typeof window.showToast === 'function') {
+              window.showToast("{% trans 'Thank you for rating your conversation!' %}", "success");
+            }
+          } else {
+            alert(data.error || "{% trans 'Failed to submit rating.' %}");
+          }
+        })
+        .catch(err => {
+          ratingForm.submit();
+        });
+      });
+    }
+  });
+</script>

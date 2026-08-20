@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% load i18n static %}
+
+{% block title %}{% trans "Language Settings" %} — Nearby Chat{% endblock %}
+
+{% block content %}
+<div style="max-width: 500px; margin: 0 auto;">
+  <div class="card">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-5);">
+      <h2>{% trans "Select Language / भाषा चुनें" %}</h2>
+      <a href="{% url 'core:settings' %}" class="btn btn-sm btn-secondary">{% trans "Back" %}</a>
+    </div>
+
+    <form method="post">
+      {% csrf_token %}
+
+      <div style="display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-6);">
+        
+        <label class="card" style="padding: var(--space-4); display: flex; align-items: center; justify-content: space-between; cursor: pointer; border-color: {% if current_language == 'en' %}var(--primary){% else %}var(--border-color){% endif %};">
+          <div style="display: flex; align-items: center; gap: var(--space-3);">
+            <input type="radio" name="language" value="en" class="checkbox-field" {% if current_language == 'en' %}checked{% endif %}>
+            <div>
+              <div style="font-weight: 700; font-size: var(--text-base);">English</div>
+              <div style="font-size: var(--text-xs); color: var(--text-muted);">Default English Interface</div>
+            </div>
+          </div>
+          {% if current_language == 'en' %}<span class="badge badge-primary">Active</span>{% endif %}
+        </label>
+
+        <label class="card" style="padding: var(--space-4); display: flex; align-items: center; justify-content: space-between; cursor: pointer; border-color: {% if current_language == 'hi' %}var(--primary){% else %}var(--border-color){% endif %};">
+          <div style="display: flex; align-items: center; gap: var(--space-3);">
+            <input type="radio" name="language" value="hi" class="checkbox-field" {% if current_language == 'hi' %}checked{% endif %}>
+            <div>
+              <div style="font-weight: 700; font-size: var(--text-base);">हिंदी (Hindi)</div>
+              <div style="font-size: var(--text-xs); color: var(--text-muted);">प्राकृतिक हिंदी इंटरफेस</div>
+            </div>
+          </div>
+          {% if current_language == 'hi' %}<span class="badge badge-primary">सक्रिय</span>{% endif %}
+        </label>
+
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width: 100%;">
+        {% trans "Apply Language / भाषा लागू करें" %}
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

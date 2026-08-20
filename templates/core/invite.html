@@ -1,0 +1,177 @@
+{% extends 'base.html' %}
+{% load i18n static %}
+
+{% block title %}{% trans "Invite Friends" %} — Nearby Chat{% endblock %}
+
+{% block content %}
+<div style="max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: var(--space-5);">
+
+  <!-- Hero Header Card -->
+  <div class="card" style="text-align: center; padding: var(--space-6) var(--space-5); position: relative; overflow: hidden;">
+    <div style="width: 64px; height: 64px; border-radius: var(--radius-xl); background: rgba(99, 102, 241, 0.15); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 32px; margin: 0 auto var(--space-3); box-shadow: 0 8px 24px rgba(99, 102, 241, 0.2);">
+      👥
+    </div>
+    <h1 style="font-size: var(--text-2xl); margin-bottom: var(--space-2);">{% trans "Invite Friends" %}</h1>
+    <p style="font-size: var(--text-sm); color: var(--text-muted); max-width: 440px; margin: 0 auto var(--space-5); line-height: 1.4;">
+      {% trans "Bring your friends to Nearby Chat and meet more people together." %}
+    </p>
+
+    <!-- Invite Link Box -->
+    <div style="background: var(--bg-subtle); border: 1.5px dashed var(--border-color); border-radius: var(--radius-lg); padding: var(--space-3) var(--space-4); display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-4); flex-wrap: wrap;">
+      <span id="invite-url-text" style="font-family: monospace; font-size: var(--text-xs); color: var(--text-primary); word-break: break-all; text-align: left; flex: 1; min-width: 200px;">
+        {{ invite_url }}
+      </span>
+      <div style="display: flex; gap: var(--space-2); flex-shrink: 0;">
+        <button type="button" onclick="copyInviteLink()" id="btn-copy-invite" class="btn btn-sm btn-primary">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+          <span id="copy-btn-label">{% trans "Copy Link" %}</span>
+        </button>
+        <button type="button" onclick="nativeShareInvite()" class="btn btn-sm btn-secondary" title="{% trans 'Share via apps' %}">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+          {% trans "Share" %}
+        </button>
+      </div>
+    </div>
+
+    <!-- Quick Direct Share Buttons -->
+    <div style="display: flex; justify-content: center; gap: var(--space-2); flex-wrap: wrap;">
+      <a href="https://api.whatsapp.com/send?text={% filter urlencode %}{% trans "Hey! Join me on Nearby Chat to talk and meet people nearby:" %} {{ invite_url }}{% endfilter %}" target="_blank" rel="noopener noreferrer" class="btn btn-sm" style="background: #25D366; color: white; border: none; font-weight: 600;">
+        💬 WhatsApp
+      </a>
+      <a href="https://t.me/share/url?url={{ invite_url|urlencode }}&text={% filter urlencode %}{% trans "Join me on Nearby Chat!" %}{% endfilter %}" target="_blank" rel="noopener noreferrer" class="btn btn-sm" style="background: #0088cc; color: white; border: none; font-weight: 600;">
+        ✈️ Telegram
+      </a>
+      <a href="https://twitter.com/intent/tweet?text={% filter urlencode %}{% trans "Join me on Nearby Chat to connect with people nearby:" %} {{ invite_url }}{% endfilter %}" target="_blank" rel="noopener noreferrer" class="btn btn-sm" style="background: #1DA1F2; color: white; border: none; font-weight: 600;">
+        🐦 Twitter
+      </a>
+      <a href="sms:?body={% filter urlencode %}{% trans "Join me on Nearby Chat:" %} {{ invite_url }}{% endfilter %}" class="btn btn-sm btn-secondary">
+        📱 SMS
+      </a>
+    </div>
+
+  </div>
+
+  <!-- Your Community Progress Card -->
+  <div class="card" style="padding: var(--space-5);">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-3); flex-wrap: wrap; gap: var(--space-2);">
+      <div>
+        <h2 style="font-size: var(--text-base); margin-bottom: 2px;">{% trans "Your Community Progress" %}</h2>
+        <p style="font-size: var(--text-xs); color: var(--text-muted); margin: 0;">
+          {% trans "Every genuine friend helps make Nearby Chat a better place." %}
+        </p>
+      </div>
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <span style="font-size: var(--text-xs); color: var(--text-muted);">{% trans "Current Badge" %}:</span>
+        <button type="button" onclick="openBadgeModal('{{ user.profile.badge }}')" class="badge" style="cursor: pointer; background: rgba(99, 102, 241, 0.15); color: var(--primary); border: 1px solid rgba(99, 102, 241, 0.3); font-weight: 700; font-size: var(--text-xs);">
+          {{ badge_details.emoji }} {{ badge_details.name }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Stats summary -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-4);">
+      <div style="background: var(--bg-subtle); padding: var(--space-3); border-radius: var(--radius-md); text-align: center;">
+        <div style="font-size: var(--text-2xl); font-weight: 800; color: var(--primary);">{{ invite_progress.joined_count }}</div>
+        <div style="font-size: var(--text-xs); color: var(--text-muted); font-weight: 600;">{% trans "Friends Joined" %}</div>
+      </div>
+      <div style="background: var(--bg-subtle); padding: var(--space-3); border-radius: var(--radius-md); text-align: center;">
+        <div style="font-size: var(--text-2xl); font-weight: 800; color: var(--success);">{{ invite_progress.qualified_count }}</div>
+        <div style="font-size: var(--text-xs); color: var(--text-muted); font-weight: 600;">{% trans "Active Friends" %}</div>
+      </div>
+    </div>
+
+    <!-- Progress Bar toward Next Tier -->
+    {% if invite_progress.next_tier %}
+      <div style="margin-top: var(--space-3);">
+        <div style="display: flex; justify-content: space-between; font-size: var(--text-xs); font-weight: 600; margin-bottom: 6px;">
+          <span>🎯 {% trans "Next Milestone" %}: {% if invite_progress.next_tier == 'connector' %}🤝 {% trans "Connector" %}{% else %}⭐ {% trans "Trusted Member" %}{% endif %}</span>
+          <span style="color: var(--primary);">{{ invite_progress.needed_for_next }} {% trans "more to unlock" %}</span>
+        </div>
+        <div style="height: 8px; background: var(--bg-subtle); border-radius: 999px; overflow: hidden; border: 1px solid var(--border-color);">
+          <div style="height: 100%; width: {{ invite_progress.progress_pct }}%; background: linear-gradient(90deg, #6366F1, #06B6D4); border-radius: 999px; transition: width 0.3s ease;"></div>
+        </div>
+      </div>
+    {% else %}
+      <div style="display: flex; align-items: center; gap: 8px; font-size: var(--text-xs); color: var(--success); font-weight: 600;">
+        <span>🎉</span> {% trans "You have reached top community standing! Thank you for growing Nearby Chat." %}
+      </div>
+    {% endif %}
+
+  </div>
+
+  <!-- Community Badges Showcase Card -->
+  <div class="card" style="padding: var(--space-5);">
+    <h2 style="font-size: var(--text-base); margin-bottom: var(--space-1);">{% trans "Community Badges" %}</h2>
+    <p style="font-size: var(--text-xs); color: var(--text-muted); margin-bottom: var(--space-4);">
+      {% trans "Badges celebrate your participation, activity, and genuine contributions to the community." %}
+    </p>
+
+    <div style="display: flex; flex-direction: column; gap: var(--space-3);">
+      {% for b in all_badges %}
+        <div onclick="openBadgeModal('{{ b.id }}')" 
+             style="display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3); background: var(--bg-subtle); border-radius: var(--radius-md); border: 1px solid var(--border-color); cursor: pointer; transition: all 0.15s ease;"
+             onmouseover="this.style.borderColor='var(--primary)';"
+             onmouseout="this.style.borderColor='var(--border-color)';">
+          <div style="font-size: 24px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--bg-card); border-radius: var(--radius-md);">
+            {{ b.emoji }}
+          </div>
+          <div style="flex: 1; min-width: 0;">
+            <div style="font-size: var(--text-sm); font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 6px;">
+              {{ b.name }}
+              {% if user.profile.badge == b.id %}
+                <span class="badge badge-primary" style="font-size: 10px; padding: 2px 6px;">{% trans "Your Badge" %}</span>
+              {% endif %}
+            </div>
+            <div style="font-size: var(--text-xs); color: var(--text-muted); line-height: 1.3;">
+              {{ b.description }}
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+</div>
+
+<!-- Badge Explanation Modal -->
+{% include 'includes/badge_modal.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function copyInviteLink() {
+    const urlText = "{{ invite_url }}";
+    navigator.clipboard.writeText(urlText).then(() => {
+      const label = document.getElementById('copy-btn-label');
+      if (label) label.textContent = "{% trans 'Copied!' %}";
+      if (typeof window.showToast === 'function') {
+        window.showToast("{% trans 'Invite link copied to clipboard!' %}", "success");
+      }
+      setTimeout(() => {
+        if (label) label.textContent = "{% trans 'Copy Link' %}";
+      }, 2500);
+    }).catch(() => {
+      prompt("{% trans 'Copy your invite link:' %}", urlText);
+    });
+  }
+
+  function nativeShareInvite() {
+    const urlText = "{{ invite_url }}";
+    const shareData = {
+      title: 'Nearby Chat',
+      text: "{% trans 'Join me on Nearby Chat to connect with people nearby in real-time!' %}",
+      url: urlText
+    };
+
+    if (navigator.share) {
+      navigator.share(shareData).catch((err) => {
+        if (err.name !== 'AbortError') {
+          copyInviteLink();
+        }
+      });
+    } else {
+      copyInviteLink();
+    }
+  }
+</script>
+{% endblock %}

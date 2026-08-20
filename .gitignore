@@ -1,0 +1,32 @@
+# Python / Django
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+
+# Database
+*.sqlite3
+*.db
+
+# Environment Variables & Secrets
+.env
+.env.local
+.env.*.local
+
+# Static & Uploaded Media
+staticfiles/
+media/avatars/
+media/room_avatars/
+
+# Logs & System
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
