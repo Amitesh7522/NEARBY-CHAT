@@ -17,13 +17,24 @@ from .models import OTPVerification
 
 logger = logging.getLogger(__name__)
 
-def generate_otp(length=6):
-    """Generate a secure numeric OTP string."""
-    return ''.join(str(random.randint(0, 9)) for _ in range(length))
+import secrets
+
+def generate_secure_otp(length=6) -> str:
+    """
+    Generate a cryptographically secure numeric OTP string using Python's secrets module.
+    """
+    return f"{secrets.randbelow(10**length):0{length}d}"
+
+# Alias for backwards compatibility
+generate_otp = generate_secure_otp
 
 def hash_otp(otp: str) -> str:
-    """Hash OTP with secret key before database persistence."""
-    return hashlib.sha256(f"{otp}:{settings.SECRET_KEY}".encode('utf-8')).hexdigest()
+    """
+    Hash OTP with Django SECRET_KEY before persisting to database.
+    Plaintext OTPs are never stored in the database.
+    """
+    salt = getattr(settings, 'SECRET_KEY', 'nearby-chat-salt')
+    return hashlib.sha256(f"{otp.strip()}:{salt}".encode('utf-8')).hexdigest()
 
 class SMSProviderAdapter:
     """Base SMS Provider Adapter interface."""
@@ -33,12 +44,7 @@ class SMSProviderAdapter:
 class ConsoleSMSProvider(SMSProviderAdapter):
     """Development console logger provider."""
     def send_otp(self, phone_number: str, otp: str) -> bool:
-        logger.info(f"===> [DEV OTP DISPATCH] Phone: {phone_number} | OTP: {otp} <===")
-        print(f"\n==========================================")
-        print(f" [DEV OTP DISPATCH] Phone: {phone_number}")
-        print(f" [NEARBY CHAT CODE]: {otp}")
-        print(f" (Valid for 10 minutes)")
-        print(f"==========================================\n")
+        logger.info(f"===> [DEV OTP DISPATCH] Phone: {phone_number} <===")
         return True
 
 class MSG91Provider(SMSProviderAdapter):
@@ -133,45 +139,116 @@ class TwilioProvider(SMSProviderAdapter):
             logger.error(f"Failed to dispatch Twilio OTP: {e}")
             return False
 
-class EmailVerificationProvider:
+class BrevoEmailProvider:
     """
-    Real Email OTP Provider using Django SMTP / Gmail / SendGrid with responsive HTML template.
+    Production Brevo REST API v3 Integration (https://api.brevo.com/v3/smtp/email).
+    Sends transactional emails from verified sender: Nearby Chat <no-reply@nearbychat.in>.
+    Never exposes API keys or plaintext tokens in frontend/responses.
     """
-    @staticmethod
-    def send_otp(email_address: str, otp: str) -> bool:
-        from django.core.mail import send_mail
+    API_URL = "https://api.brevo.com/v3/smtp/email"
+
+    @classmethod
+    def send_otp(cls, email_address: str, otp: str) -> tuple[bool, str]:
         from django.template.loader import render_to_string
-        from django.utils.html import strip_tags
+
+        api_key = os.getenv('BREVO_API_KEY')
+        sender_email = os.getenv('BREVO_SENDER_EMAIL', 'no-reply@nearbychat.in')
+        sender_name = os.getenv('BREVO_SENDER_NAME', 'Nearby Chat')
+
+        # Fallback to standard Django SMTP if BREVO_API_KEY is not set
+        if not api_key:
+            logger.info("BREVO_API_KEY not configured. Checking SMTP fallback.")
+            return cls._send_smtp_fallback(email_address, otp)
 
         subject = f"Your Nearby Chat Verification Code: {otp}"
-        from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'Nearby Chat <nearbychat.support@gmail.com>')
         
         context = {
             'otp': otp,
             'email': email_address,
+            'sender_email': sender_email,
         }
-        
+
         try:
-            html_message = render_to_string('emails/otp_verification.html', context)
-            plain_message = f"Your Nearby Chat verification code is: {otp}\n\nThis code is valid for 10 minutes.\n\nTeam Nearby Chat"
-            
+            html_content = render_to_string('emails/otp_verification.html', context)
+        except Exception:
+            html_content = f"""<div style="font-family:sans-serif;padding:24px;background:#111827;color:#fff;border-radius:12px;">
+                <h2>Nearby<span style="color:#6366f1;">Chat</span></h2>
+                <p>Your verification code is:</p>
+                <h1 style="letter-spacing:6px;color:#6366f1;">{otp}</h1>
+                <p>Valid for 10 minutes. Please do not share this code with anyone.</p>
+            </div>"""
+
+        plain_content = (
+            f"Your Nearby Chat verification code is: {otp}\n\n"
+            f"This code is valid for 10 minutes.\n\n"
+            f"Team Nearby Chat ({sender_email})"
+        )
+
+        payload = {
+            "sender": {
+                "name": sender_name,
+                "email": sender_email
+            },
+            "to": [
+                {
+                    "email": email_address
+                }
+            ],
+            "subject": subject,
+            "htmlContent": html_content,
+            "textContent": plain_content
+        }
+
+        headers = {
+            "api-key": api_key,
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
+
+        try:
+            data_bytes = json.dumps(payload).encode('utf-8')
+            req = urllib.request.Request(cls.API_URL, data=data_bytes, headers=headers, method='POST')
+            with urllib.request.urlopen(req, timeout=12) as response:
+                if response.status in (200, 201, 202):
+                    return True, "Verification code sent to your email."
+                return False, "Failed to deliver email through Brevo API."
+        except urllib.error.HTTPError as e:
+            try:
+                err_body = e.read().decode('utf-8')
+                logger.error(f"Brevo API error: status={e.code}, body={err_body}")
+            except Exception:
+                logger.error(f"Brevo API error: status={e.code}")
+            return False, "Email delivery provider encountered an error. Please try again."
+        except Exception as e:
+            logger.error(f"Brevo API network failure: {e}")
+            return False, "Unable to reach email service. Please try again."
+
+    @classmethod
+    def _send_smtp_fallback(cls, email_address: str, otp: str) -> tuple[bool, str]:
+        """Secondary fallback via Django standard SMTP/mail backend."""
+        from django.core.mail import send_mail
+        from django.template.loader import render_to_string
+
+        sender_email = os.getenv('BREVO_SENDER_EMAIL', getattr(settings, 'DEFAULT_FROM_EMAIL', 'no-reply@nearbychat.in'))
+        subject = f"Your Nearby Chat Verification Code: {otp}"
+        try:
+            html_message = render_to_string('emails/otp_verification.html', {'otp': otp, 'email': email_address, 'sender_email': sender_email})
+            plain_message = f"Your Nearby Chat verification code is: {otp}\n\nValid for 10 minutes.\n\nTeam Nearby Chat"
             send_mail(
                 subject=subject,
                 message=plain_message,
-                from_email=from_email,
+                from_email=sender_email,
                 recipient_list=[email_address],
                 html_message=html_message,
                 fail_silently=False,
             )
-            return True
+            return True, "Verification code sent to your email."
         except Exception as e:
-            logger.error(f"Failed to send email OTP to {email_address}: {e}")
-            # Fallback to dev console logging if SMTP credentials not fully configured
-            print(f"\n==========================================")
-            print(f" [EMAIL OTP DISPATCH] To: {email_address}")
-            print(f" [NEARBY CHAT CODE]: {otp}")
-            print(f"==========================================\n")
-            return True
+            logger.error(f"SMTP email dispatch failed: {e}")
+            return False, "Failed to dispatch verification email."
+
+# Alias for backwards compatibility
+EmailVerificationProvider = BrevoEmailProvider
 
 def get_sms_provider() -> SMSProviderAdapter:
     """Factory returning configured SMS provider."""
@@ -186,64 +263,138 @@ def get_sms_provider() -> SMSProviderAdapter:
 
 class VerificationService:
     @staticmethod
-    def send_otp_challenge(identifier: str, purpose: str = 'signup') -> tuple[bool, str]:
-        """Creates an OTP verification record and sends it via Email or SMS provider."""
-        otp = generate_otp(6)
-        hashed = hash_otp(otp)
-        expires_at = timezone.now() + timedelta(minutes=10)
+    def normalize_identifier(identifier: str) -> str:
+        """Normalizes email or phone number for consistent hashing and lookup."""
+        ident = identifier.strip()
+        if '@' in ident:
+            return ident.lower()
+        # Phone: extract last 10 digits
+        clean_digits = ''.join(c for c in ident if c.isdigit())
+        if len(clean_digits) >= 10:
+            return clean_digits[-10:]
+        return clean_digits
 
-        # Invalidate prior unused OTPs for this identifier and purpose
+    @staticmethod
+    def send_otp_challenge(identifier: str, purpose: str = 'signup', ip_address: str = None) -> tuple[bool, str, int]:
+        """
+        Creates an OTP challenge, enforces rate limits, resend cooldown, and dispatches
+        via Brevo API (for email) or SMS Provider (for phone).
+        Returns: (success: bool, message: str, cooldown_seconds: int)
+        """
+        norm_ident = VerificationService.normalize_identifier(identifier)
+        if not norm_ident:
+            return False, "A valid email address or phone number is required.", 0
+
+        now = timezone.now()
+
+        # 1. Check Rate Limiting (Max 5 requests per hour per identifier)
+        one_hour_ago = now - timedelta(hours=1)
+        recent_requests_count = OTPVerification.objects.filter(
+            identifier=norm_ident,
+            created_at__gte=one_hour_ago
+        ).count()
+
+        if recent_requests_count >= 5:
+            return False, "Too many verification requests. Please wait an hour before requesting again.", 3600
+
+        # 2. Check 60-Second Resend Cooldown
+        latest_otp = OTPVerification.objects.filter(
+            identifier=norm_ident,
+            purpose=purpose,
+            is_used=False
+        ).order_by('-created_at').first()
+
+        if latest_otp and (now - latest_otp.created_at).total_seconds() < 60:
+            remaining_cooldown = int(60 - (now - latest_otp.created_at).total_seconds())
+            return False, f"Please wait {remaining_cooldown} seconds before requesting a new code.", remaining_cooldown
+
+        # 3. Invalidate prior unused OTPs for this identifier & purpose
         OTPVerification.objects.filter(
-            identifier=identifier,
+            identifier=norm_ident,
             purpose=purpose,
             is_used=False
         ).update(is_used=True)
 
+        # 4. Generate cryptographically secure OTP and hash it
+        otp = generate_secure_otp(6)
+        hashed = hash_otp(otp)
+        expires_at = now + timedelta(minutes=10)
+
         record = OTPVerification.objects.create(
-            identifier=identifier,
+            identifier=norm_ident,
             otp_hash=hashed,
             purpose=purpose,
             expires_at=expires_at,
+            ip_address=ip_address,
+            last_resend_at=now,
         )
 
-        # 1. Email OTP Dispatch
-        if '@' in identifier:
-            dispatched = EmailVerificationProvider.send_otp(identifier, otp)
+        # 5. Dispatch through Brevo API (for email) or SMS provider (for phone)
+        if '@' in norm_ident:
+            success, msg = BrevoEmailProvider.send_otp(norm_ident, otp)
+        else:
+            provider = get_sms_provider()
+            dispatched = provider.send_otp(norm_ident, otp)
             if dispatched:
-                return True, "Verification code sent to your email."
-            return False, "Failed to send verification email. Please check your address."
+                success, msg = True, "Verification code sent via SMS."
+            else:
+                success, msg = False, "Failed to send SMS verification code."
 
-        # 2. SMS Phone OTP Dispatch
-        provider = get_sms_provider()
-        dispatched = provider.send_otp(identifier, otp)
-        if dispatched:
-            return True, "Verification code sent successfully via SMS."
-        return False, "Failed to send verification code. Please check configuration."
+        if success:
+            return True, msg, 60
+        else:
+            # Clean up failed dispatch record
+            record.is_used = True
+            record.save(update_fields=['is_used'])
+            return False, msg, 0
 
     @staticmethod
-    def verify_otp_challenge(identifier: str, otp: str, purpose: str = 'signup') -> bool:
-        """Verifies supplied OTP against stored hashed record."""
+    def verify_otp_challenge(identifier: str, otp: str, purpose: str = 'signup') -> tuple[bool, str]:
+        """
+        Verifies supplied OTP against stored hashed record.
+        Enforces 5 maximum failed attempts and expiration.
+        Returns: (success: bool, message: str)
+        """
+        norm_ident = VerificationService.normalize_identifier(identifier)
+        if not norm_ident or not otp:
+            return False, "Verification code and email/phone are required."
+
         record = OTPVerification.objects.filter(
-            identifier=identifier,
+            identifier=norm_ident,
             purpose=purpose,
             is_used=False
         ).order_by('-created_at').first()
 
         if not record:
-            return False
+            return False, "Invalid or expired verification code. Please request a new one."
 
-        if not record.is_valid():
-            return False
-
-        record.attempts += 1
-        record.save(update_fields=['attempts'])
-
-        if record.otp_hash == hash_otp(otp):
+        if timezone.now() >= record.expires_at:
             record.is_used = True
             record.save(update_fields=['is_used'])
-            return True
-        
-        return False
+            return False, "Verification code has expired. Please request a new one."
+
+        if record.attempts >= 5:
+            record.is_used = True
+            record.save(update_fields=['is_used'])
+            return False, "Too many failed attempts. This code has been invalidated. Please request a new one."
+
+        # Increment attempt counter
+        record.attempts += 1
+
+        # Check cryptographic hash match
+        if record.otp_hash == hash_otp(otp):
+            record.is_used = True
+            record.save(update_fields=['attempts', 'is_used'])
+            return True, "Verification successful."
+        else:
+            remaining_attempts = 5 - record.attempts
+            if remaining_attempts <= 0:
+                record.is_used = True
+                record.save(update_fields=['attempts', 'is_used'])
+                return False, "Too many failed attempts. This code has been invalidated. Please request a new one."
+            
+            record.save(update_fields=['attempts'])
+            return False, f"Incorrect verification code. {remaining_attempts} attempt(s) remaining."
 
 
 class ReferralService:

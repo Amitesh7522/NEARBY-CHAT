@@ -112,9 +112,9 @@ class AccountRegisterForm(forms.Form):
 
         # Real OTP backend verification
         if identifier and otp:
-            is_valid = VerificationService.verify_otp_challenge(identifier, otp, purpose='signup')
+            is_valid, err_msg = VerificationService.verify_otp_challenge(identifier, otp, purpose='signup')
             if not is_valid:
-                self.add_error('otp', _('Invalid or expired verification code. Please request a new one.'))
+                self.add_error('otp', err_msg)
 
         return cleaned_data
 

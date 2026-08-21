@@ -5,6 +5,7 @@ from django.test import TestCase, Client
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 
+from unittest.mock import patch
 from apps.accounts.models import Profile, Interest, PRESET_AVATARS, generate_unique_user_identity
 from apps.accounts.services import VerificationService
 
@@ -28,12 +29,14 @@ class OnboardingAndAuthTests(TestCase):
         self.assertTrue(dname.startswith('User '))
         self.assertIn(preset, PRESET_AVATARS)
 
-    def test_step1_registration_with_email_and_real_otp(self):
+    @patch('apps.accounts.services.BrevoEmailProvider.send_otp')
+    def test_step1_registration_with_email_and_real_otp(self, mock_send_otp):
         """Step 1: User signs up with Email + Real OTP + Password."""
+        mock_send_otp.return_value = (True, "Sent")
         email = "rohan.sharma@example.com"
         
         # 1. Dispatch real OTP challenge
-        success, msg = VerificationService.send_otp_challenge(email, purpose='signup')
+        success, msg, cooldown = VerificationService.send_otp_challenge(email, purpose='signup')
         self.assertTrue(success)
 
         # Retrieve generated OTP hash record
@@ -43,7 +46,8 @@ class OnboardingAndAuthTests(TestCase):
 
         # Re-generate or simulate verification with matching OTP
         # We test verify_otp_challenge with invalid OTP
-        self.assertFalse(VerificationService.verify_otp_challenge(email, "000000", purpose='signup'))
+        is_valid, _ = VerificationService.verify_otp_challenge(email, "000000", purpose='signup')
+        self.assertFalse(is_valid)
 
         # Let's test form submission directly with valid OTP
         # Create OTP challenge and verify

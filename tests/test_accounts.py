@@ -63,14 +63,15 @@ class AccountsTestCase(TestCase):
 
     def test_otp_verification_service(self):
         """Tests OTP dispatch and verification service."""
-        success, msg = VerificationService.send_otp_challenge('9876543210', purpose='signup')
+        success, msg, cooldown = VerificationService.send_otp_challenge('9876543210', purpose='signup')
         self.assertTrue(success)
 
         record = OTPVerification.objects.filter(identifier='9876543210', is_used=False).first()
         self.assertIsNotNone(record)
 
         # Invalidate with wrong OTP
-        self.assertFalse(VerificationService.verify_otp_challenge('9876543210', '000000', purpose='signup'))
+        is_valid, err_msg = VerificationService.verify_otp_challenge('9876543210', '000000', purpose='signup')
+        self.assertFalse(is_valid)
 
     def test_profile_update(self):
         """User can update bio, location, visibility, and cartoon avatar preset."""

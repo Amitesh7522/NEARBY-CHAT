@@ -289,10 +289,11 @@ def send_otp_api(request):
                 if User.objects.filter(phone_number=phone_std).exists():
                     return Response({'error': _('An account with this phone number already exists.')}, status=status.HTTP_400_BAD_REQUEST)
 
-    success, msg = VerificationService.send_otp_challenge(identifier, purpose)
+    ip_address = request.META.get('REMOTE_ADDR')
+    success, msg, cooldown = VerificationService.send_otp_challenge(identifier, purpose, ip_address=ip_address)
     if success:
-        return Response({'success': True, 'message': msg, 'cooldown': 60, 'status': 'sent'})
-    return Response({'success': False, 'error': msg}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response({'success': True, 'message': msg, 'cooldown': cooldown, 'status': 'sent'})
+    return Response({'success': False, 'error': msg, 'cooldown': cooldown}, status=status.HTTP_429_TOO_MANY_REQUESTS if cooldown > 0 else status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['POST'])
@@ -306,10 +307,10 @@ def verify_otp_api(request):
     if not identifier or not otp:
         return Response({'error': _('Identifier and OTP are required.')}, status=status.HTTP_400_BAD_REQUEST)
 
-    is_valid = VerificationService.verify_otp_challenge(identifier, otp, purpose)
+    is_valid, msg = VerificationService.verify_otp_challenge(identifier, otp, purpose)
     if is_valid:
-        return Response({'message': _('Verification successful.'), 'verified': True})
-    return Response({'error': _('Invalid or expired verification code.')}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'message': msg, 'verified': True})
+    return Response({'error': msg}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['POST'])

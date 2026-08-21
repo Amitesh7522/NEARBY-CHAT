@@ -287,7 +287,9 @@ class UserPreference(models.Model):
 
 class OTPVerification(models.Model):
     """
-    Verification model for SMS / Email OTP verification codes.
+    Production-grade verification model for SMS / Email OTP verification codes.
+    Stores cryptographically hashed tokens, expiration timestamps, attempt counters,
+    and resend tracking for rate limiting.
     """
     PURPOSE_CHOICES = [
         ('signup', _('Signup')),
@@ -301,16 +303,21 @@ class OTPVerification(models.Model):
     otp_hash = models.CharField(_('Hashed OTP'), max_length=128)
     purpose = models.CharField(_('Purpose'), max_length=20, choices=PURPOSE_CHOICES, default='signup')
     expires_at = models.DateTimeField(_('Expires At'))
-    is_used = models.BooleanField(_('Is Used'), default=False)
+    is_used = models.BooleanField(_('Is Used'), default=False, db_index=True)
     attempts = models.PositiveSmallIntegerField(_('Attempts'), default=0)
-    created_at = models.DateTimeField(auto_now_add=True)
+    resend_count = models.PositiveSmallIntegerField(_('Resend Count'), default=0)
+    last_resend_at = models.DateTimeField(_('Last Resend Timestamp'), null=True, blank=True)
+    ip_address = models.GenericIPAddressField(_('Client IP Address'), null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
         verbose_name = _('OTP Verification')
         verbose_name_plural = _('OTP Verifications')
         indexes = [
             models.Index(fields=['identifier', 'purpose', 'is_used']),
+            models.Index(fields=['identifier', 'created_at']),
         ]
 
     def is_valid(self):
+        """Returns True if the OTP is active, unexpired, and under the maximum attempt limit."""
         return not self.is_used and timezone.now() < self.expires_at and self.attempts < 5
