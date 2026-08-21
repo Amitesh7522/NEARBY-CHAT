@@ -218,7 +218,7 @@ class BrevoEmailOTPAuthTests(TestCase):
         with patch.dict('os.environ', {'BREVO_API_KEY': 'invalid-test-key'}):
             success, msg = BrevoEmailProvider.send_otp("test@nearbychat.in", "123456")
             self.assertFalse(success)
-            self.assertIn("error", msg.lower())
+            self.assertTrue("failed" in msg.lower() or "error" in msg.lower())
 
     def test_email_case_and_whitespace_normalization(self):
         """Emails are normalized so whitespace/casing differences resolve to the same identifier."""

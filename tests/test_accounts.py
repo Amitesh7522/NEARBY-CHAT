@@ -2,6 +2,7 @@ import pytest
 from django.test import TestCase, Client
 from django.contrib.auth import get_user_model
 from django.urls import reverse
+from unittest.mock import patch
 from apps.accounts.models import Profile, UserPreference, OTPVerification, Interest
 from apps.accounts.services import VerificationService, hash_otp
 
@@ -61,7 +62,8 @@ class AccountsTestCase(TestCase):
         self.assertIsNotNone(new_u)
         self.assertTrue(new_u.profile.is_temporary_name)
 
-    def test_otp_verification_service(self):
+    @patch('apps.accounts.services.Fast2SMSProvider.send_otp', return_value=True)
+    def test_otp_verification_service(self, mock_sms):
         """Tests OTP dispatch and verification service."""
         success, msg, cooldown = VerificationService.send_otp_challenge('9876543210', purpose='signup')
         self.assertTrue(success)

@@ -155,10 +155,9 @@ class BrevoEmailProvider:
         sender_email = os.getenv('BREVO_SENDER_EMAIL', 'no-reply@nearbychat.in')
         sender_name = os.getenv('BREVO_SENDER_NAME', 'Nearby Chat')
 
-        # Fallback to standard Django SMTP if BREVO_API_KEY is not set
         if not api_key:
-            logger.info("BREVO_API_KEY not configured. Checking SMTP fallback.")
-            return cls._send_smtp_fallback(email_address, otp)
+            logger.error("BREVO_API_KEY is not configured in the environment (.env).")
+            return False, "Email verification service is temporarily unavailable. Please check system configuration."
 
         subject = f"Your Nearby Chat Verification Code: {otp}"
         
@@ -209,43 +208,29 @@ class BrevoEmailProvider:
             data_bytes = json.dumps(payload).encode('utf-8')
             req = urllib.request.Request(cls.API_URL, data=data_bytes, headers=headers, method='POST')
             with urllib.request.urlopen(req, timeout=12) as response:
+                res_body = response.read().decode('utf-8')
+                res_json = json.loads(res_body) if res_body else {}
+                message_id = res_json.get('messageId', 'unknown')
+                
                 if response.status in (200, 201, 202):
+                    logger.info(f"Brevo email OTP accepted: status={response.status}, messageId={message_id}")
                     return True, "Verification code sent to your email."
+                logger.error(f"Brevo API unexpected status: status={response.status}, body={res_body}")
                 return False, "Failed to deliver email through Brevo API."
         except urllib.error.HTTPError as e:
             try:
                 err_body = e.read().decode('utf-8')
-                logger.error(f"Brevo API error: status={e.code}, body={err_body}")
+                logger.error(f"Brevo API HTTP error: status={e.code}, body={err_body}")
             except Exception:
-                logger.error(f"Brevo API error: status={e.code}")
+                logger.error(f"Brevo API HTTP error: status={e.code}")
+            if e.code == 401:
+                return False, "Email provider authentication failed. Please check BREVO_API_KEY."
+            elif e.code == 400:
+                return False, "Invalid email request rejected by provider."
             return False, "Email delivery provider encountered an error. Please try again."
         except Exception as e:
             logger.error(f"Brevo API network failure: {e}")
             return False, "Unable to reach email service. Please try again."
-
-    @classmethod
-    def _send_smtp_fallback(cls, email_address: str, otp: str) -> tuple[bool, str]:
-        """Secondary fallback via Django standard SMTP/mail backend."""
-        from django.core.mail import send_mail
-        from django.template.loader import render_to_string
-
-        sender_email = os.getenv('BREVO_SENDER_EMAIL', getattr(settings, 'DEFAULT_FROM_EMAIL', 'no-reply@nearbychat.in'))
-        subject = f"Your Nearby Chat Verification Code: {otp}"
-        try:
-            html_message = render_to_string('emails/otp_verification.html', {'otp': otp, 'email': email_address, 'sender_email': sender_email})
-            plain_message = f"Your Nearby Chat verification code is: {otp}\n\nValid for 10 minutes.\n\nTeam Nearby Chat"
-            send_mail(
-                subject=subject,
-                message=plain_message,
-                from_email=sender_email,
-                recipient_list=[email_address],
-                html_message=html_message,
-                fail_silently=False,
-            )
-            return True, "Verification code sent to your email."
-        except Exception as e:
-            logger.error(f"SMTP email dispatch failed: {e}")
-            return False, "Failed to dispatch verification email."
 
 # Alias for backwards compatibility
 EmailVerificationProvider = BrevoEmailProvider
