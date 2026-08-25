@@ -54,14 +54,14 @@
       </div>
 
       <div class="form-group">
-        <label class="form-label">{% trans "Display Name" %}</label>
+        <label class="form-label">{% trans "Name" %}</label>
         {{ form.display_name }}
       </div>
 
       <!-- Interests / Passions Multi-Selector -->
       <div class="form-group" style="background: var(--bg-card); padding: var(--space-3); border-radius: var(--radius-md); border: 1px solid var(--border-color);">
         <label class="form-label" style="display:flex; justify-content:space-between; align-items:center; margin-bottom: var(--space-2);">
-          <span>{% trans "Your Interests & Passions" %}</span>
+          <span>{% trans "Your Interests & Passions (3 to 5)" %}</span>
           <span style="font-size:var(--text-xs); color:var(--primary); font-weight:normal;">{% trans "Tap to select / unselect" %}</span>
         </label>
         <div style="display: flex; flex-wrap: wrap; gap: 6px;">
@@ -75,11 +75,6 @@
             </label>
           {% endfor %}
         </div>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">{% trans "Bio" %}</label>
-        {{ form.bio }}
       </div>
 
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3);">

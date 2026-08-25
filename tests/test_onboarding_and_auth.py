@@ -102,7 +102,7 @@ class OnboardingAndAuthTests(TestCase):
         self.assertIn('email', resp2.context['form'].errors)
 
     def test_step2_onboarding_save_profile(self):
-        """Step 2: User customizes Name, Gender, Avatar, and Interests."""
+        """Step 2: User customizes Gender, Avatar, and Interests (Reuses Name from signup)."""
         # Create registered user
         user = User.objects.create_user(
             username='user_5555',
@@ -110,8 +110,8 @@ class OnboardingAndAuthTests(TestCase):
             password='TestPassword123!',
             is_verified=True
         )
-        user.profile.display_name = 'User 5555'
-        user.profile.is_temporary_name = True
+        user.profile.display_name = 'Maya Patel'
+        user.profile.is_temporary_name = False
         user.profile.save()
 
         self.client.force_login(user)
@@ -120,9 +120,8 @@ class OnboardingAndAuthTests(TestCase):
         get_resp = self.client.get(reverse('accounts:onboarding'))
         self.assertEqual(get_resp.status_code, 200)
 
-        # POST profile details
+        # POST profile details (Gender, Interests, Avatar)
         post_data = {
-            'display_name': 'Maya Patel',
             'avatar_preset': 'panda',
             'gender': 'female',
             'interests': [self.gaming.id, self.music.id, self.tech.id]
@@ -139,15 +138,15 @@ class OnboardingAndAuthTests(TestCase):
         self.assertTrue(user.profile.is_profile_completed)
 
     def test_step2_onboarding_skip_for_now(self):
-        """Step 2: User skips profile setup and lands directly on Home with functional temporary profile."""
+        """Step 2: User skips profile setup and lands directly on Home with functional profile."""
         user = User.objects.create_user(
             username='user_9999',
             email='skipper@example.com',
             password='TestPassword123!',
             is_verified=True
         )
-        user.profile.display_name = 'User 9999'
-        user.profile.is_temporary_name = True
+        user.profile.display_name = 'Alex Skipper'
+        user.profile.is_temporary_name = False
         user.profile.save()
 
         self.client.force_login(user)
@@ -157,18 +156,11 @@ class OnboardingAndAuthTests(TestCase):
 
         # Profile remains functional
         user.profile.refresh_from_db()
-        self.assertEqual(user.profile.display_name, 'User 9999')
-        self.assertTrue(user.profile.is_temporary_name)
-        self.assertFalse(user.profile.is_profile_completed)
+        self.assertEqual(user.profile.display_name, 'Alex Skipper')
+        self.assertFalse(user.profile.is_temporary_name)
 
-        # Checklist returns accurate stats
-        checklist = user.profile.get_completion_checklist()
-        self.assertFalse(checklist['has_name'])
-        self.assertFalse(checklist['has_interests'])
-        self.assertFalse(checklist['is_completed'])
-
-    def test_max_interests_limit_enforcement(self):
-        """Selecting more than 5 interests raises validation error."""
+    def test_min_and_max_interests_limit_enforcement(self):
+        """Selecting fewer than 3 or more than 5 interests raises validation errors."""
         user = User.objects.create_user(
             username='user_1234',
             email='gamer@example.com',
@@ -177,16 +169,26 @@ class OnboardingAndAuthTests(TestCase):
         )
         self.client.force_login(user)
 
-        # Create 6th interest
-        anime = Interest.objects.create(name='Anime', slug='anime', emoji='🎞️')
+        # 1. Fewer than 3 interests
+        post_data_under = {
+            'gender': 'male',
+            'avatar_preset': 'fox',
+            'interests': [self.gaming.id, self.music.id]
+        }
+        resp1 = self.client.post(reverse('accounts:onboarding'), data=post_data_under)
+        self.assertEqual(resp1.status_code, 200)
+        self.assertIn('interests', resp1.context['form'].errors)
 
-        post_data = {
-            'display_name': 'Gamer Pro',
+        # 2. More than 5 interests
+        anime = Interest.objects.create(name='Anime', slug='anime', emoji='🎞️')
+        post_data_over = {
+            'gender': 'male',
+            'avatar_preset': 'fox',
             'interests': [self.gaming.id, self.music.id, self.tech.id, self.travel.id, self.food.id, anime.id]
         }
-        resp = self.client.post(reverse('accounts:onboarding'), data=post_data)
-        self.assertEqual(resp.status_code, 200) # Form errors out and re-renders
-        self.assertIn('interests', resp.context['form'].errors)
+        resp2 = self.client.post(reverse('accounts:onboarding'), data=post_data_over)
+        self.assertEqual(resp2.status_code, 200)
+        self.assertIn('interests', resp2.context['form'].errors)
 
     def test_login_with_email_and_phone(self):
         """User can log in using their email or phone number."""

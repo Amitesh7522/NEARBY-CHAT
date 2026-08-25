@@ -118,32 +118,37 @@ UserRegisterForm = AccountRegisterForm
 
 class OnboardingProfileForm(forms.ModelForm):
     """
-    Step 2 Optional Profile Setup Form:
-    Allows user to personalize Avatar, Gender, and Interests (Max 5).
-    Reuses Name collected during signup.
+    Step 2 Profile Setup Form:
+    Asks ONLY for:
+    1. Gender
+    2. Interests (Requires at least 3, max 5)
+    3. Profile photo/avatar (Upload or Preset)
+    Reuses Name already collected during signup.
     """
     interests = forms.ModelMultipleChoiceField(
         queryset=Interest.objects.all(),
-        required=False,
+        required=True,
         widget=forms.CheckboxSelectMultiple()
+    )
+    gender = forms.ChoiceField(
+        choices=Profile.GENDER_CHOICES,
+        required=True,
+        initial='prefer_not_to_say',
+        widget=forms.RadioSelect(choices=Profile.GENDER_CHOICES)
     )
 
     class Meta:
         model = Profile
-        fields = ['display_name', 'avatar', 'avatar_preset', 'gender', 'interests']
+        fields = ['gender', 'interests', 'avatar', 'avatar_preset']
         widgets = {
-            'display_name': forms.TextInput(attrs={
-                'class': 'input-field',
-                'placeholder': _('e.g. Alex, Rahul, Maya'),
-                'maxlength': '60'
-            }),
             'avatar_preset': forms.HiddenInput(),
-            'gender': forms.RadioSelect(choices=Profile.GENDER_CHOICES),
         }
 
     def clean_interests(self):
         interests = self.cleaned_data.get('interests')
-        if interests and len(interests) > 5:
+        if not interests or len(interests) < 3:
+            raise forms.ValidationError(_('Please select at least 3 interests.'))
+        if len(interests) > 5:
             raise forms.ValidationError(_('You can select a maximum of 5 interests.'))
         return interests
 
@@ -178,7 +183,7 @@ class UserLoginForm(AuthenticationForm):
 
 class ProfileEditForm(forms.ModelForm):
     """
-    Profile update form for avatar, bio, interests, location and presence preferences.
+    Profile update form for name, avatar, gender, interests, location and presence preferences.
     """
     interests = forms.ModelMultipleChoiceField(
         queryset=Interest.objects.all(),
@@ -189,14 +194,12 @@ class ProfileEditForm(forms.ModelForm):
     class Meta:
         model = Profile
         fields = [
-            'display_name', 'avatar', 'avatar_preset', 'interests', 'bio',
-            'gender', 'date_of_birth', 'location_name', 'show_online_status',
-            'allow_random_chat'
+            'display_name', 'avatar', 'avatar_preset', 'gender', 'interests',
+            'date_of_birth', 'location_name', 'show_online_status', 'allow_random_chat'
         ]
         widgets = {
-            'display_name': forms.TextInput(attrs={'class': 'input-field', 'placeholder': _('Public Display Name')}),
+            'display_name': forms.TextInput(attrs={'class': 'input-field', 'placeholder': _('Your Name')}),
             'avatar_preset': forms.HiddenInput(),
-            'bio': forms.Textarea(attrs={'class': 'input-field', 'rows': 3, 'placeholder': _('Tell others about yourself...')}),
             'gender': forms.Select(attrs={'class': 'input-field select-field'}),
             'date_of_birth': forms.DateInput(attrs={'class': 'input-field', 'type': 'date'}),
             'location_name': forms.TextInput(attrs={'class': 'input-field', 'placeholder': _('e.g. Mumbai, New Delhi, Bengaluru')}),
@@ -206,8 +209,11 @@ class ProfileEditForm(forms.ModelForm):
 
     def clean_interests(self):
         interests = self.cleaned_data.get('interests')
-        if interests and len(interests) > 5:
-            raise forms.ValidationError(_('You can select a maximum of 5 interests.'))
+        if interests:
+            if len(interests) < 3:
+                raise forms.ValidationError(_('Please select at least 3 interests.'))
+            if len(interests) > 5:
+                raise forms.ValidationError(_('You can select a maximum of 5 interests.'))
         return interests
 
     def save(self, commit=True):

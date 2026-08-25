@@ -82,7 +82,8 @@ def register_view(request):
 def onboarding_view(request):
     """
     Step 2 Onboarding (100% Optional):
-    Allows user to personalize Name, Avatar, Gender, and Interests.
+    Allows user to personalize Gender, Interests (Min 3), and Profile Avatar.
+    Reuses Name already saved during signup.
     User can click 'Skip for now' or 'Save & Continue' to enter Home.
     """
     profile = request.user.profile
@@ -96,10 +97,8 @@ def onboarding_view(request):
         form = OnboardingProfileForm(request.POST, request.FILES, instance=profile)
         if form.is_valid():
             saved_profile = form.save(commit=False)
-            display_name = form.cleaned_data.get('display_name', '').strip()
-            if display_name:
-                saved_profile.display_name = display_name
-                saved_profile.is_temporary_name = False
+            if 'avatar' in request.FILES and request.FILES['avatar']:
+                saved_profile.avatar_preset = ''
             saved_profile.save()
             form.save_m2m()
 
@@ -108,11 +107,13 @@ def onboarding_view(request):
     else:
         form = OnboardingProfileForm(instance=profile)
 
+    preset_keys = ['fox', 'panda', 'cat', 'robot', 'astro', 'lion', 'bear', 'alien']
+
     return render(request, 'accounts/onboarding.html', {
         'form': form,
         'profile': profile,
         'all_interests': Interest.objects.all(),
-        'preset_avatars': PRESET_AVATARS,
+        'preset_avatars': preset_keys,
     })
 
 

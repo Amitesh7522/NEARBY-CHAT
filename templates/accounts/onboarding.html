@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load i18n static %}
 
-{% block title %}{% trans "Create Your Profile" %} — Nearby Chat{% endblock %}
+{% block title %}{% trans "Complete Your Profile" %} — Nearby Chat{% endblock %}
 
 {% block content %}
 <div style="max-width: 520px; margin: var(--space-6) auto; padding: 0 var(--space-4);">
@@ -10,13 +10,13 @@
     <!-- Header & Step Indicator -->
     <div style="text-align: center; margin-bottom: var(--space-5);">
       <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(99, 102, 241, 0.12); color: var(--primary); font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 999px; margin-bottom: var(--space-3); border: 1px solid rgba(99, 102, 241, 0.25);">
-        ✨ {% trans "Step 2 of 2 — Personalize (Optional)" %}
+        ✨ {% trans "Profile Setup" %}
       </div>
       <h2 style="font-size: var(--text-2xl); font-weight: 800; letter-spacing: -0.5px; margin-bottom: 6px;">
-        {% trans "Create your profile" %}
+        {% blocktrans with name=profile.get_display_name %}Welcome, {{ name }}!{% endblocktrans %}
       </h2>
       <p style="color: var(--text-secondary); font-size: var(--text-sm); line-height: 1.5; margin: 0;">
-        {% trans "Tell people a little about yourself and what you like. You can change these details anytime." %}
+        {% trans "Personalize your profile to connect with people nearby who share your passions." %}
       </p>
     </div>
 
@@ -29,31 +29,80 @@
         </div>
       {% endif %}
 
-      <!-- 1. Display Name Section -->
-      <div class="form-group" style="background: var(--bg-surface); padding: var(--space-4); border-radius: var(--radius-lg); border: 1px solid var(--border-color); margin-bottom: var(--space-4);">
-        <label class="form-label" for="id_display_name" style="font-weight: 700; margin-bottom: 4px;">
-          {% trans "1. Your Name / Display Name" %}
-        </label>
-        <p style="font-size: var(--text-xs); color: var(--text-secondary); margin-top: 0; margin-bottom: var(--space-3);">
-          {% trans "This is the name people will see in chats and community rooms." %}
-        </p>
-        <input type="text" name="display_name" id="id_display_name" class="input-field" placeholder="{% trans 'e.g. Alex, Rahul, Maya' %}" value="{% if not profile.is_temporary_name %}{{ profile.display_name }}{% endif %}">
-        {% if form.display_name.errors %}<span style="color:var(--error);font-size:var(--text-xs);">{{ form.display_name.errors.0 }}</span>{% endif %}
-      </div>
-
-      <!-- 2. Profile Photo / Avatar Section -->
+      <!-- 1. Gender Section -->
       <div class="form-group" style="background: var(--bg-surface); padding: var(--space-4); border-radius: var(--radius-lg); border: 1px solid var(--border-color); margin-bottom: var(--space-4);">
         <label class="form-label" style="font-weight: 700; margin-bottom: 4px;">
-          {% trans "2. Profile Photo / Avatar" %}
+          {% trans "1. Gender" %}
         </label>
         <p style="font-size: var(--text-xs); color: var(--text-secondary); margin-top: 0; margin-bottom: var(--space-3);">
-          {% trans "Upload a picture or pick an illustrated avatar preset." %}
+          {% trans "Select your gender identity." %}
         </p>
 
-        <div style="display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-3);">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px;">
+          <label class="gender-pill" style="cursor: pointer;">
+            <input type="radio" name="gender" value="male" {% if profile.gender == 'male' %}checked{% endif %} style="display:none;" onchange="updateGenderStyle(this)">
+            <span class="gender-btn" style="display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; border-radius: var(--radius-md); border: 1px solid {% if profile.gender == 'male' %}var(--primary){% else %}var(--border-color){% endif %}; background: {% if profile.gender == 'male' %}var(--primary){% else %}var(--bg-card){% endif %}; color: {% if profile.gender == 'male' %}#fff{% else %}var(--text-secondary){% endif %}; font-size: var(--text-xs); font-weight: 600; text-align: center; transition: all 0.2s;">
+              👨 {% trans "Male" %}
+            </span>
+          </label>
+          <label class="gender-pill" style="cursor: pointer;">
+            <input type="radio" name="gender" value="female" {% if profile.gender == 'female' %}checked{% endif %} style="display:none;" onchange="updateGenderStyle(this)">
+            <span class="gender-btn" style="display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; border-radius: var(--radius-md); border: 1px solid {% if profile.gender == 'female' %}var(--primary){% else %}var(--border-color){% endif %}; background: {% if profile.gender == 'female' %}var(--primary){% else %}var(--bg-card){% endif %}; color: {% if profile.gender == 'female' %}#fff{% else %}var(--text-secondary){% endif %}; font-size: var(--text-xs); font-weight: 600; text-align: center; transition: all 0.2s;">
+              👩 {% trans "Female" %}
+            </span>
+          </label>
+          <label class="gender-pill" style="cursor: pointer;">
+            <input type="radio" name="gender" value="prefer_not_to_say" {% if profile.gender == 'prefer_not_to_say' or not profile.gender %}checked{% endif %} style="display:none;" onchange="updateGenderStyle(this)">
+            <span class="gender-btn" style="display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; border-radius: var(--radius-md); border: 1px solid {% if profile.gender == 'prefer_not_to_say' or not profile.gender %}var(--primary){% else %}var(--border-color){% endif %}; background: {% if profile.gender == 'prefer_not_to_say' or not profile.gender %}var(--primary){% else %}var(--bg-card){% endif %}; color: {% if profile.gender == 'prefer_not_to_say' or not profile.gender %}#fff{% else %}var(--text-secondary){% endif %}; font-size: var(--text-xs); font-weight: 600; text-align: center; transition: all 0.2s;">
+              🔒 {% trans "Prefer not to say" %}
+            </span>
+          </label>
+        </div>
+        {% if form.gender.errors %}<span style="color:var(--error);font-size:var(--text-xs);display:block;margin-top:4px;">{{ form.gender.errors.0 }}</span>{% endif %}
+      </div>
+
+      <!-- 2. Interests Section (Requires at least 3, max 5) -->
+      <div class="form-group" style="background: var(--bg-surface); padding: var(--space-4); border-radius: var(--radius-lg); border: 1px solid var(--border-color); margin-bottom: var(--space-4);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+          <label class="form-label" style="font-weight: 700; margin: 0;">
+            {% trans "2. Interests & Passions (Choose 3 to 5)" %}
+          </label>
+          <span id="interest-counter" style="font-size: 11px; font-weight: 700; color: var(--primary);">
+            {% trans "Selected" %}: 0/5
+          </span>
+        </div>
+        <p style="font-size: var(--text-xs); color: var(--text-secondary); margin-top: 0; margin-bottom: var(--space-3);">
+          {% trans "Select at least 3 topics you enjoy discussing." %}
+        </p>
+
+        <div style="display: flex; flex-wrap: wrap; gap: 8px;" id="interests-grid">
+          {% for interest in all_interests %}
+            <label class="interest-chip" style="cursor: pointer; user-select: none;">
+              <input type="checkbox" name="interests" value="{{ interest.id }}" {% if interest in profile.interests.all %}checked{% endif %} style="display:none;" onchange="handleInterestChange(this)">
+              <span class="badge" style="padding: 8px 14px; font-size: var(--text-xs); border: 1px solid {% if interest in profile.interests.all %}var(--primary){% else %}var(--border-color){% endif %}; background: {% if interest in profile.interests.all %}var(--primary){% else %}var(--bg-card){% endif %}; color: {% if interest in profile.interests.all %}#FFFFFF{% else %}var(--text-secondary){% endif %}; transition: all 0.2s ease; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px;">
+                <span>{{ interest.emoji }}</span>
+                <span>{{ interest.name }}</span>
+              </span>
+            </label>
+          {% endfor %}
+        </div>
+        <div id="interest-error-msg" style="color: var(--error); font-size: var(--text-xs); margin-top: 6px; display: none;"></div>
+        {% if form.interests.errors %}<span style="color:var(--error);font-size:var(--text-xs);display:block;margin-top:6px;">{{ form.interests.errors.0 }}</span>{% endif %}
+      </div>
+
+      <!-- 3. Profile Photo / Avatar Section -->
+      <div class="form-group" style="background: var(--bg-surface); padding: var(--space-4); border-radius: var(--radius-lg); border: 1px solid var(--border-color); margin-bottom: var(--space-5);">
+        <label class="form-label" style="font-weight: 700; margin-bottom: 4px;">
+          {% trans "3. Profile Photo / Avatar" %}
+        </label>
+        <p style="font-size: var(--text-xs); color: var(--text-secondary); margin-top: 0; margin-bottom: var(--space-3);">
+          {% trans "Upload your photo or select a cartoon avatar preset." %}
+        </p>
+
+        <div style="display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-4);">
           <!-- Live Preview Avatar -->
-          <div style="position: relative; width: 68px; height: 68px; flex-shrink: 0;">
-            <img id="avatar-preview" src="{{ profile.get_avatar_url }}" alt="Avatar Preview" class="avatar" style="width: 68px; height: 68px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary); box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);">
+          <div style="position: relative; width: 72px; height: 72px; flex-shrink: 0;">
+            <img id="avatar-preview" src="{{ profile.get_avatar_url }}" alt="Avatar Preview" class="avatar" style="width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 2.5px solid var(--primary); box-shadow: 0 4px 14px rgba(99, 102, 241, 0.25);">
           </div>
 
           <div style="flex: 1;">
@@ -69,79 +118,20 @@
 
         <!-- Illustrated Avatar Preset Options -->
         <label class="form-label" style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
-          {% trans "Or choose a cartoon preset" %}
+          {% trans "Or choose a default cartoon avatar" %}
         </label>
-        <div style="display: flex; gap: 8px; flex-wrap: wrap;" id="preset-container">
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;" id="preset-container">
           {% for preset in preset_avatars %}
-            <button type="button" class="preset-btn {% if profile.avatar_preset == preset %}active{% endif %}" onclick="selectPreset('{{ preset }}')" style="width: 42px; height: 42px; padding: 4px; border-radius: 50%; border: 2px solid {% if profile.avatar_preset == preset %}var(--primary){% else %}transparent{% endif %}; background: var(--bg-card); cursor: pointer; transition: all 0.2s;">
+            <button type="button" class="preset-btn {% if profile.avatar_preset == preset and not profile.avatar %}active{% endif %}" onclick="selectPreset('{{ preset }}')" style="width: 44px; height: 44px; padding: 4px; border-radius: 50%; border: 2px solid {% if profile.avatar_preset == preset and not profile.avatar %}var(--primary){% else %}transparent{% endif %}; background: var(--bg-card); cursor: pointer; transition: all 0.2s;">
               <img src="/static/images/avatars/{{ preset }}.svg" alt="{{ preset }}" style="width: 100%; height: 100%; object-fit: contain;">
             </button>
           {% endfor %}
         </div>
       </div>
 
-      <!-- 3. Gender Section -->
-      <div class="form-group" style="background: var(--bg-surface); padding: var(--space-4); border-radius: var(--radius-lg); border: 1px solid var(--border-color); margin-bottom: var(--space-4);">
-        <label class="form-label" style="font-weight: 700; margin-bottom: 4px;">
-          {% trans "3. Gender" %}
-        </label>
-        <p style="font-size: var(--text-xs); color: var(--text-secondary); margin-top: 0; margin-bottom: var(--space-3);">
-          {% trans "Used for matching preferences (always private)." %}
-        </p>
-
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px;">
-          <label class="gender-pill" style="cursor: pointer;">
-            <input type="radio" name="gender" value="male" {% if profile.gender == 'male' %}checked{% endif %} style="display:none;" onchange="updateGenderStyle(this)">
-            <span class="gender-btn" style="display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; border-radius: var(--radius-md); border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-secondary); font-size: var(--text-xs); font-weight: 600; text-align: center;">
-              👨 {% trans "Male" %}
-            </span>
-          </label>
-          <label class="gender-pill" style="cursor: pointer;">
-            <input type="radio" name="gender" value="female" {% if profile.gender == 'female' %}checked{% endif %} style="display:none;" onchange="updateGenderStyle(this)">
-            <span class="gender-btn" style="display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; border-radius: var(--radius-md); border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-secondary); font-size: var(--text-xs); font-weight: 600; text-align: center;">
-              👩 {% trans "Female" %}
-            </span>
-          </label>
-          <label class="gender-pill" style="cursor: pointer;">
-            <input type="radio" name="gender" value="prefer_not_to_say" {% if profile.gender == 'prefer_not_to_say' or not profile.gender %}checked{% endif %} style="display:none;" onchange="updateGenderStyle(this)">
-            <span class="gender-btn" style="display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; border-radius: var(--radius-md); border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-secondary); font-size: var(--text-xs); font-weight: 600; text-align: center;">
-              🔒 {% trans "Prefer not to say" %}
-            </span>
-          </label>
-        </div>
-      </div>
-
-      <!-- 4. Interests Section (Max 5) -->
-      <div class="form-group" style="background: var(--bg-surface); padding: var(--space-4); border-radius: var(--radius-lg); border: 1px solid var(--border-color); margin-bottom: var(--space-5);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-          <label class="form-label" style="font-weight: 700; margin: 0;">
-            {% trans "4. What are you interested in?" %}
-          </label>
-          <span id="interest-counter" style="font-size: 11px; font-weight: 700; color: var(--primary);">
-            {% trans "Selected" %}: 0/5
-          </span>
-        </div>
-        <p style="font-size: var(--text-xs); color: var(--text-secondary); margin-top: 0; margin-bottom: var(--space-3);">
-          {% trans "Pick up to 5 passions to connect over common topics." %}
-        </p>
-
-        <div style="display: flex; flex-wrap: wrap; gap: 6px;" id="interests-grid">
-          {% for interest in all_interests %}
-            <label class="interest-chip" style="cursor: pointer; user-select: none;">
-              <input type="checkbox" name="interests" value="{{ interest.id }}" {% if interest in profile.interests.all %}checked{% endif %} style="display:none;" onchange="handleInterestChange(this)">
-              <span class="badge" style="padding: 8px 14px; font-size: var(--text-xs); border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-secondary); transition: all 0.2s ease; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px;">
-                <span>{{ interest.emoji }}</span>
-                <span>{{ interest.name }}</span>
-              </span>
-            </label>
-          {% endfor %}
-        </div>
-        {% if form.interests.errors %}<span style="color:var(--error);font-size:var(--text-xs);display:block;margin-top:6px;">{{ form.interests.errors.0 }}</span>{% endif %}
-      </div>
-
       <!-- Actions: Save & Continue vs Skip for now -->
       <div style="display: flex; flex-direction: column; gap: var(--space-3);">
-        <button type="submit" class="btn btn-primary" style="width: 100%; padding: var(--space-3); font-weight: 700; font-size: var(--text-sm); box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);">
+        <button type="submit" id="save-btn" class="btn btn-primary" style="width: 100%; padding: var(--space-3); font-weight: 700; font-size: var(--text-sm); box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);">
           {% trans "Save & Enter Nearby Chat" %} →
         </button>
 
@@ -158,11 +148,14 @@
 <script>
   function selectPreset(presetName) {
     document.getElementById('id_avatar_preset').value = presetName;
-    document.getElementById('avatar-preview').src = `/static/images/avatars/${presetName}.svg`;
+    document.getElementById('avatar-preview').src = '/static/images/avatars/' + presetName + '.svg';
     
-    // Highlight selected button
-    const buttons = document.querySelectorAll('#preset-container .preset-btn');
-    buttons.forEach(btn => {
+    // Clear file input if a preset is picked
+    const fileInput = document.getElementById('id_avatar_input');
+    if (fileInput) fileInput.value = '';
+
+    // Update active border on preset buttons
+    document.querySelectorAll('#preset-container .preset-btn').forEach(btn => {
       btn.style.borderColor = 'transparent';
     });
     event.currentTarget.style.borderColor = 'var(--primary)';
@@ -173,19 +166,22 @@
       const reader = new FileReader();
       reader.onload = function(e) {
         document.getElementById('avatar-preview').src = e.target.result;
-        document.getElementById('id_avatar_preset').value = '';
+        // Deselect presets
+        document.querySelectorAll('#preset-container .preset-btn').forEach(btn => {
+          btn.style.borderColor = 'transparent';
+        });
       };
       reader.readAsDataURL(input.files[0]);
     }
   }
 
-  function updateGenderStyle() {
-    const radioInputs = document.querySelectorAll('input[name="gender"]');
-    radioInputs.forEach(radio => {
-      const btn = radio.nextElementSibling;
-      if (radio.checked) {
+  function updateGenderStyle(radio) {
+    document.querySelectorAll('.gender-pill').forEach(pill => {
+      const btn = pill.querySelector('.gender-btn');
+      const r = pill.querySelector('input[type="radio"]');
+      if (r.checked) {
         btn.style.background = 'var(--primary)';
-        btn.style.color = '#FFFFFF';
+        btn.style.color = '#fff';
         btn.style.borderColor = 'var(--primary)';
       } else {
         btn.style.background = 'var(--bg-card)';
@@ -196,46 +192,56 @@
   }
 
   function handleInterestChange(checkbox) {
-    const checkedCount = document.querySelectorAll('input[name="interests"]:checked').length;
-    
-    if (checkedCount > 5) {
-      checkbox.checked = false;
-      alert('{% trans "You can select a maximum of 5 interests." %}');
-      return;
-    }
-
-    document.getElementById('interest-counter').innerText = `{% trans "Selected" %}: ${checkedCount}/5`;
-
+    const checked = document.querySelectorAll('#interests-grid input[type="checkbox"]:checked');
     const badge = checkbox.nextElementSibling;
+    const errorMsg = document.getElementById('interest-error-msg');
+
     if (checkbox.checked) {
+      if (checked.length > 5) {
+        checkbox.checked = false;
+        errorMsg.style.display = 'block';
+        errorMsg.innerText = '{% trans "You can select a maximum of 5 interests." %}';
+        return;
+      }
       badge.style.background = 'var(--primary)';
       badge.style.color = '#FFFFFF';
       badge.style.borderColor = 'var(--primary)';
-      badge.style.boxShadow = '0 2px 8px rgba(99, 102, 241, 0.35)';
     } else {
       badge.style.background = 'var(--bg-card)';
       badge.style.color = 'var(--text-secondary)';
       badge.style.borderColor = 'var(--border-color)';
-      badge.style.boxShadow = 'none';
+    }
+
+    errorMsg.style.display = 'none';
+    updateCounter();
+  }
+
+  function updateCounter() {
+    const checked = document.querySelectorAll('#interests-grid input[type="checkbox"]:checked');
+    const counter = document.getElementById('interest-counter');
+    counter.innerText = '{% trans "Selected" %}: ' + checked.length + '/5';
+    if (checked.length < 3) {
+      counter.style.color = 'var(--warning, #f59e0b)';
+    } else {
+      counter.style.color = 'var(--success, #10b981)';
     }
   }
 
-  // Initialize UI styles on load
   document.addEventListener('DOMContentLoaded', () => {
-    updateGenderStyle();
-    
-    const checkboxes = document.querySelectorAll('input[name="interests"]');
-    let initialCount = 0;
-    checkboxes.forEach(cb => {
-      if (cb.checked) {
-        initialCount++;
-        const badge = cb.nextElementSibling;
-        badge.style.background = 'var(--primary)';
-        badge.style.color = '#FFFFFF';
-        badge.style.borderColor = 'var(--primary)';
+    updateCounter();
+
+    // Client-side validation on submit
+    const form = document.getElementById('onboarding-form');
+    form.addEventListener('submit', (e) => {
+      const checked = document.querySelectorAll('#interests-grid input[type="checkbox"]:checked');
+      const errorMsg = document.getElementById('interest-error-msg');
+      if (checked.length < 3) {
+        e.preventDefault();
+        errorMsg.style.display = 'block';
+        errorMsg.innerText = '{% trans "Please select at least 3 interests to continue." %}';
+        document.getElementById('interests-grid').scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     });
-    document.getElementById('interest-counter').innerText = `{% trans "Selected" %}: ${initialCount}/5`;
   });
 </script>
 {% endblock %}

@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load i18n static %}
 
-{% block title %}{{ profile.get_display_name }} (@{{ target_user.username }}) — Nearby Chat{% endblock %}
+{% block title %}{{ profile.get_display_name }} — Nearby Chat{% endblock %}
 
 {% block content %}
 <div style="max-width: 600px; margin: 0 auto;">
@@ -9,27 +9,18 @@
     
     <!-- Avatar with Online Status Indicator -->
     <div style="margin: 0 auto var(--space-4); display: inline-block; position: relative;">
-      <img src="{{ profile.get_avatar_url }}" alt="{{ target_user.username }}" class="avatar avatar-xl">
+      <img src="{{ profile.get_avatar_url }}" alt="{{ profile.get_display_name }}" class="avatar avatar-xl">
       {% if profile.show_online_status %}
         <span class="status-dot {% if profile.is_currently_online %}online{% else %}offline{% endif %}" style="width:16px;height:16px;bottom:4px;right:4px;"></span>
       {% endif %}
     </div>
 
-    <div style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 2px;">
+    <div style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: var(--space-3);">
       <h2 style="margin: 0;">{{ profile.get_display_name }}</h2>
       {% if profile.is_temporary_name %}
         <span class="badge" style="font-size: 10px; background: rgba(239, 68, 68, 0.1); color: var(--error); border: 1px solid rgba(239, 68, 68, 0.25);">{% trans "Temporary name" %}</span>
       {% endif %}
     </div>
-
-    {% if is_own_profile and profile.is_temporary_name %}
-      <div style="margin-bottom: var(--space-2);">
-        <a href="{% url 'accounts:onboarding' %}" style="font-size: var(--text-xs); color: var(--primary); font-weight: 700; text-decoration: underline;">
-          + {% trans "Add your real name" %}
-        </a>
-      </div>
-    {% endif %}
-    <p style="font-size: var(--text-sm); color: var(--text-muted); margin-bottom: var(--space-2);">@{{ target_user.username }}</p>
 
     <!-- Public Rating Summary & Reputation Badges -->
     <div style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: var(--space-4); flex-wrap: wrap;">
@@ -67,19 +58,12 @@
 
     <!-- Interests Badges -->
     {% if profile.interests.all %}
-      <div style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: var(--space-4); flex-wrap: wrap;">
+      <div style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: var(--space-5); flex-wrap: wrap;">
         {% for interest in profile.interests.all %}
           <span class="badge" style="padding: 4px 10px; font-size: var(--text-xs); border: 1px solid var(--border-color); background: var(--bg-card); color: var(--text-primary); border-radius: 999px;">
             {{ interest.emoji }} {{ interest.name }}
           </span>
         {% endfor %}
-      </div>
-    {% endif %}
-
-    <!-- Bio -->
-    {% if profile.bio %}
-      <div style="background-color: var(--bg-subtle); padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); font-size: var(--text-sm); margin-bottom: var(--space-5); text-align: left;">
-        {{ profile.bio }}
       </div>
     {% endif %}
 
