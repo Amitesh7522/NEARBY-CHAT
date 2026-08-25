@@ -1,149 +1,149 @@
 {% extends 'base.html' %}
 {% load i18n static %}
 
-{% block title %}{% trans "Create Account" %} — Nearby Chat{% endblock %}
+{% block title %}{% trans "Sign Up" %} — Nearby Chat{% endblock %}
 
 {% block content %}
-<div style="max-width: 440px; margin: var(--space-6) auto; padding: 0 var(--space-4);">
-  <div class="card" style="box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35); border-radius: var(--radius-xl); border: 1px solid var(--border-color);">
+<div class="auth-wrapper">
+  <div class="auth-card">
     
-    <!-- Header Brand & Step 1 Indicator -->
-    <div style="text-align: center; margin-bottom: var(--space-5);">
-      <img src="{% static 'images/icon.svg' %}" alt="Nearby Chat" style="width: 52px; height: 52px; margin: 0 auto var(--space-3); border-radius: 14px; box-shadow: 0 8px 20px rgba(99, 102, 241, 0.25);">
-      <h2 style="font-size: var(--text-2xl); font-weight: 800; letter-spacing: -0.5px; margin-bottom: 4px;">{% trans "Create your account" %}</h2>
-      <p style="color: var(--text-secondary); font-size: var(--text-xs); margin: 0;">{% trans "Real-time, instant conversations with zero fluff." %}</p>
+    <!-- Brand Header -->
+    <div class="auth-header">
+      <img src="{% static 'images/icon.svg' %}" alt="Nearby Chat" class="auth-logo">
+      <h1 class="auth-title">{% trans "Create your account" %}</h1>
+      <p class="auth-subtitle">{% trans "Connect with people nearby in real-time." %}</p>
     </div>
 
-    <!-- Step Indicator Pill -->
-    <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: var(--space-5);">
-      <div style="background: var(--primary); color: #fff; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px;">
-        {% trans "Step 1 of 2" %}
-      </div>
-      <span style="font-size: 12px; color: var(--text-secondary); font-weight: 500;">{% trans "Account Details" %}</span>
-    </div>
-
-    <!-- Auth Mode Toggle (Email vs Phone) -->
-    <div style="display: grid; grid-template-columns: 1fr 1fr; background: var(--bg-surface); padding: 4px; border-radius: var(--radius-lg); border: 1px solid var(--border-color); margin-bottom: var(--space-4);">
-      <button type="button" id="tab-email" class="btn btn-sm" onclick="switchAuthTab('email')" style="background: var(--primary); color: #fff; font-weight: 600; border-radius: var(--radius-md); transition: all 0.2s;">
-        ✉️ {% trans "Email" %}
-      </button>
-      <button type="button" id="tab-phone" class="btn btn-sm" onclick="switchAuthTab('phone')" style="background: transparent; color: var(--text-secondary); font-weight: 600; border-radius: var(--radius-md); transition: all 0.2s;">
-        📱 {% trans "Phone Number" %}
-      </button>
-    </div>
-
-    <form method="post" action="{% url 'accounts:register' %}" id="register-form">
+    <form method="post" action="{% url 'accounts:register' %}" id="register-form" class="auth-form" novalidate>
       {% csrf_token %}
-      <input type="hidden" name="auth_type" id="auth_type_input" value="email">
 
       {% if form.non_field_errors %}
-        <div style="background-color: var(--error-bg); color: var(--error-text); padding: var(--space-3); border-radius: var(--radius-md); font-size: var(--text-sm); margin-bottom: var(--space-4);">
+        <div style="background-color: var(--error-bg); color: var(--error-text); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); font-size: var(--text-xs); border: 1px solid var(--error);">
           {{ form.non_field_errors }}
         </div>
       {% endif %}
 
-      <!-- Identifier Field (Email / Phone) with Send OTP Action -->
+      <!-- 1. Full Name -->
       <div class="form-group">
-        <label class="form-label" id="identifier-label" for="id_identifier">{% trans "Email Address" %}</label>
-        <div style="display: flex; gap: 8px;">
-          <input type="text" name="identifier" id="id_identifier" class="input-field" placeholder="you@example.com" value="{{ form.identifier.value|default:'' }}" required autocomplete="username" style="flex: 1;">
-          <button type="button" id="send-otp-btn" class="btn btn-secondary" onclick="requestOTP()" style="white-space: nowrap; font-size: var(--text-xs); padding: 0 14px; font-weight: 600;">
+        <label class="form-label" for="id_name">{% trans "Name" %}</label>
+        <input type="text" name="name" id="id_name" class="input-field" placeholder="{% trans 'Enter your name' %}" value="{{ form.name.value|default:'' }}" required autocomplete="name" maxlength="50">
+        {% if form.name.errors %}<span style="color:var(--error);font-size:var(--text-xs);">{{ form.name.errors.0 }}</span>{% endif %}
+      </div>
+
+      <!-- 2. Email Address with Inline Send OTP Action -->
+      <div class="form-group">
+        <label class="form-label" for="id_email">{% trans "Email Address" %}</label>
+        <div class="input-with-action">
+          <input type="email" name="email" id="id_email" class="input-field" placeholder="you@example.com" value="{{ form.email.value|default:'' }}" required autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false">
+          <button type="button" id="send-otp-btn" class="btn-send-otp" onclick="requestOTP()">
             <span id="send-otp-text">{% trans "Send OTP" %}</span>
-            <span id="send-otp-spinner" class="spinner-sm" style="display: none;"></span>
+            <span id="send-otp-spinner" class="spinner-sm" style="display: none; width: 14px; height: 14px; border-width: 2px;"></span>
           </button>
         </div>
-        <div id="otp-feedback" style="font-size: var(--text-xs); margin-top: 4px; display: none;"></div>
-        {% if form.identifier.errors %}<span style="color:var(--error);font-size:var(--text-xs);">{{ form.identifier.errors.0 }}</span>{% endif %}
+        <div id="otp-feedback" style="font-size: var(--text-xs); margin-top: 4px; display: none; line-height: 1.4;"></div>
+        {% if form.email.errors %}<span style="color:var(--error);font-size:var(--text-xs);">{{ form.email.errors.0 }}</span>{% endif %}
       </div>
 
-      <!-- 6-digit OTP Input -->
-      <div class="form-group" id="otp-container">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-1);">
-          <label class="form-label" for="id_otp" style="margin: 0;">{% trans "Verification Code (OTP)" %}</label>
-          <button type="button" id="resend-otp-btn" onclick="requestOTP()" style="background: none; border: none; color: var(--primary); font-size: var(--text-xs); cursor: pointer; padding: 0; display: none; font-weight: 600;">
-            {% trans "Resend Code" %}
-          </button>
+      <!-- 3. 6-Digit Segmented OTP Input -->
+      <div class="form-group" id="otp-group">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <label class="form-label" for="otp-box-1">{% trans "6-Digit OTP" %}</label>
+          <span id="otp-status-indicator" style="font-size: 11px; color: var(--text-muted);">{% trans "Enter code sent to email" %}</span>
         </div>
-        <input type="text" name="otp" id="id_otp" class="input-field" placeholder="• • • • • •" maxlength="6" pattern="[0-9]{6}" inputmode="numeric" autocomplete="one-time-code" required style="font-family: monospace; font-size: var(--text-lg); letter-spacing: 6px; text-align: center;">
-        {% if form.otp.errors %}<span style="color:var(--error);font-size:var(--text-xs);display:block;margin-top:4px;">{{ form.otp.errors.0 }}</span>{% endif %}
+        
+        <!-- Segmented 6-digit visual cells -->
+        <div class="otp-boxes-wrapper" id="otp-boxes">
+          <input type="text" class="otp-digit-cell" id="otp-box-1" data-index="1" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+          <input type="text" class="otp-digit-cell" id="otp-box-2" data-index="2" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+          <input type="text" class="otp-digit-cell" id="otp-box-3" data-index="3" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+          <input type="text" class="otp-digit-cell" id="otp-box-4" data-index="4" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+          <input type="text" class="otp-digit-cell" id="otp-box-5" data-index="5" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+          <input type="text" class="otp-digit-cell" id="otp-box-6" data-index="6" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="off">
+        </div>
+
+        <!-- Hidden input bound to Django Form -->
+        <input type="hidden" name="otp" id="id_otp" value="{{ form.otp.value|default:'' }}">
+        {% if form.otp.errors %}<span style="color:var(--error);font-size:var(--text-xs);margin-top:4px;display:block;">{{ form.otp.errors.0 }}</span>{% endif %}
       </div>
 
-      <!-- Password Field -->
+      <!-- 4. Password with Visibility Toggle -->
       <div class="form-group">
         <label class="form-label" for="id_password">{% trans "Password (Min 8 characters)" %}</label>
-        <input type="password" name="password" id="id_password" class="input-field" placeholder="••••••••" minlength="8" required autocomplete="new-password">
+        <div class="password-input-group">
+          <input type="password" name="password" id="id_password" class="input-field" placeholder="••••••••" minlength="8" required autocomplete="new-password">
+          <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('id_password', this)" aria-label="{% trans 'Toggle password visibility' %}">
+            <svg class="eye-open" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            <svg class="eye-closed" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="m15 18-.722-3.25"></path><path d="M2 8a10.645 10.645 0 0 0 20 0"></path><path d="m20 15-1.726-2.05"></path><path d="m4 15 1.726-2.05"></path><path d="m9 18 .722-3.25"></path></svg>
+          </button>
+        </div>
         {% if form.password.errors %}<span style="color:var(--error);font-size:var(--text-xs);">{{ form.password.errors.0 }}</span>{% endif %}
       </div>
 
-      <!-- Confirm Password Field -->
+      <!-- 5. Confirm Password with Visibility Toggle -->
       <div class="form-group">
         <label class="form-label" for="id_confirm_password">{% trans "Confirm Password" %}</label>
-        <input type="password" name="confirm_password" id="id_confirm_password" class="input-field" placeholder="••••••••" minlength="8" required autocomplete="new-password">
+        <div class="password-input-group">
+          <input type="password" name="confirm_password" id="id_confirm_password" class="input-field" placeholder="••••••••" minlength="8" required autocomplete="new-password">
+          <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('id_confirm_password', this)" aria-label="{% trans 'Toggle confirm password visibility' %}">
+            <svg class="eye-open" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            <svg class="eye-closed" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="m15 18-.722-3.25"></path><path d="M2 8a10.645 10.645 0 0 0 20 0"></path><path d="m20 15-1.726-2.05"></path><path d="m4 15 1.726-2.05"></path><path d="m9 18 .722-3.25"></path></svg>
+          </button>
+        </div>
+        <div id="password-match-feedback" style="font-size: var(--text-xs); color: var(--error); display: none; margin-top: 2px;"></div>
         {% if form.confirm_password.errors %}<span style="color:var(--error);font-size:var(--text-xs);">{{ form.confirm_password.errors.0 }}</span>{% endif %}
       </div>
 
-      <button type="submit" id="submit-btn" class="btn btn-primary" style="width: 100%; margin-top: var(--space-4); padding: var(--space-3); font-weight: 700; font-size: var(--text-sm); box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);">
-        {% trans "Create Account & Continue" %} →
+      <!-- Submit CTA Button -->
+      <button type="submit" id="create-account-btn" class="btn btn-primary auth-cta-btn">
+        {% trans "Create Account" %} →
       </button>
     </form>
 
-    <div style="text-align: center; margin-top: var(--space-5); font-size: var(--text-sm); color: var(--text-secondary);">
+    <div class="auth-footer">
       {% trans "Already have an account?" %}
-      <a href="{% url 'accounts:login' %}" style="font-weight: 600; color: var(--primary);">{% trans "Log In" %}</a>
+      <a href="{% url 'accounts:login' %}">{% trans "Sign In" %}</a>
     </div>
 
   </div>
 </div>
 
 <script>
-  let currentAuthType = 'email';
-  let cooldownTimer = null;
-  let remainingSeconds = 0;
+  let cooldownInterval = null;
 
-  function switchAuthTab(type) {
-    currentAuthType = type;
-    document.getElementById('auth_type_input').value = type;
-    
-    const emailTab = document.getElementById('tab-email');
-    const phoneTab = document.getElementById('tab-phone');
-    const label = document.getElementById('identifier-label');
-    const input = document.getElementById('id_identifier');
-    
-    if (type === 'email') {
-      emailTab.style.background = 'var(--primary)';
-      emailTab.style.color = '#fff';
-      phoneTab.style.background = 'transparent';
-      phoneTab.style.color = 'var(--text-secondary)';
-      label.innerText = '{% trans "Email Address" %}';
-      input.placeholder = 'you@example.com';
-      input.type = 'email';
+  // Password visibility toggle
+  function togglePasswordVisibility(fieldId, btn) {
+    const input = document.getElementById(fieldId);
+    const eyeOpen = btn.querySelector('.eye-open');
+    const eyeClosed = btn.querySelector('.eye-closed');
+    if (input.type === 'password') {
+      input.type = 'text';
+      eyeOpen.style.display = 'none';
+      eyeClosed.style.display = 'block';
     } else {
-      phoneTab.style.background = 'var(--primary)';
-      phoneTab.style.color = '#fff';
-      emailTab.style.background = 'transparent';
-      emailTab.style.color = 'var(--text-secondary)';
-      label.innerText = '{% trans "Phone Number" %}';
-      input.placeholder = 'e.g. 9876543210';
-      input.type = 'tel';
+      input.type = 'password';
+      eyeOpen.style.display = 'block';
+      eyeClosed.style.display = 'none';
     }
   }
 
+  // Real Brevo Email OTP Request
   async function requestOTP() {
-    if (remainingSeconds > 0) return;
-
-    const identifierInput = document.getElementById('id_identifier');
-    const identifier = identifierInput.value.trim();
+    const emailInput = document.getElementById('id_email');
+    const email = emailInput.value.trim().toLowerCase();
     const feedback = document.getElementById('otp-feedback');
     const sendBtn = document.getElementById('send-otp-btn');
     const sendText = document.getElementById('send-otp-text');
     const sendSpinner = document.getElementById('send-otp-spinner');
-    const resendBtn = document.getElementById('resend-otp-btn');
 
-    if (!identifier) {
+    if (isCooldownActive()) return;
+
+    // Frontend regex validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || !emailRegex.test(email)) {
       feedback.style.display = 'block';
       feedback.style.color = 'var(--error)';
-      feedback.innerText = currentAuthType === 'email' ? '{% trans "Please enter your email address first." %}' : '{% trans "Please enter your phone number first." %}';
-      identifierInput.focus();
+      feedback.innerText = '{% trans "Please enter a valid email address first." %}';
+      emailInput.focus();
       return;
     }
 
@@ -157,10 +157,10 @@
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRFToken': '{{ csrf_token }}',
         },
         body: JSON.stringify({
-          identifier: identifier,
+          email: email,
+          identifier: email,
           purpose: 'signup'
         })
       });
@@ -170,57 +170,195 @@
       if (response.ok && data.success) {
         feedback.style.display = 'block';
         feedback.style.color = 'var(--success, #10b981)';
-        feedback.innerText = '✓ ' + (data.message || '{% trans "Verification code dispatched!" %}');
-        document.getElementById('id_otp').focus();
-        startCooldown(data.cooldown || 60);
+        feedback.innerText = '✓ ' + (data.message || '{% trans "Verification code sent to your email." %}');
+        
+        // Save cooldown timestamp in sessionStorage (resilient to tab switches & refresh)
+        const cooldownSeconds = data.cooldown || 60;
+        const expiryTimestamp = Date.now() + cooldownSeconds * 1000;
+        sessionStorage.setItem('nearby_otp_expiry', expiryTimestamp.toString());
+        sessionStorage.setItem('nearby_otp_email', email);
+
+        startCooldown(expiryTimestamp);
+
+        // Focus the first OTP box
+        const firstBox = document.getElementById('otp-box-1');
+        if (firstBox) firstBox.focus();
       } else {
         feedback.style.display = 'block';
         feedback.style.color = 'var(--error)';
-        feedback.innerText = data.error || '{% trans "Failed to send code. Please try again." %}';
-        sendBtn.disabled = false;
-        sendText.style.display = 'inline';
-        sendSpinner.style.display = 'none';
+        feedback.innerText = data.error || '{% trans "Failed to send verification code. Please try again." %}';
+        
+        if (data.cooldown && data.cooldown > 0) {
+          const expiryTimestamp = Date.now() + data.cooldown * 1000;
+          sessionStorage.setItem('nearby_otp_expiry', expiryTimestamp.toString());
+          startCooldown(expiryTimestamp);
+        } else {
+          sendBtn.disabled = false;
+          sendText.style.display = 'inline';
+          sendSpinner.style.display = 'none';
+        }
       }
     } catch (err) {
       feedback.style.display = 'block';
       feedback.style.color = 'var(--error)';
-      feedback.innerText = '{% trans "Network error. Please check your connection." %}';
+      feedback.innerText = '{% trans "Network error. Please check your internet connection." %}';
       sendBtn.disabled = false;
       sendText.style.display = 'inline';
       sendSpinner.style.display = 'none';
     }
   }
 
-  function startCooldown(seconds) {
-    remainingSeconds = seconds;
+  function isCooldownActive() {
+    const expiry = parseInt(sessionStorage.getItem('nearby_otp_expiry') || '0', 10);
+    return expiry > Date.now();
+  }
+
+  // Timestamp-based Cooldown Timer
+  function startCooldown(expiryTimestamp) {
     const sendBtn = document.getElementById('send-otp-btn');
     const sendText = document.getElementById('send-otp-text');
     const sendSpinner = document.getElementById('send-otp-spinner');
-    const resendBtn = document.getElementById('resend-otp-btn');
 
-    sendSpinner.style.display = 'none';
-    sendText.style.display = 'inline';
-    sendBtn.disabled = true;
-    resendBtn.style.display = 'inline';
+    if (cooldownInterval) clearInterval(cooldownInterval);
 
-    if (cooldownTimer) clearInterval(cooldownTimer);
+    function update() {
+      const now = Date.now();
+      const remainingMs = expiryTimestamp - now;
+      const remainingSec = Math.max(0, Math.ceil(remainingMs / 1000));
 
-    cooldownTimer = setInterval(() => {
-      remainingSeconds--;
-      if (remainingSeconds > 0) {
-        sendText.innerText = `(${remainingSeconds}s)`;
-        resendBtn.innerText = `{% trans "Resend in" %} (${remainingSeconds}s)`;
-        resendBtn.style.opacity = '0.6';
-        resendBtn.style.pointerEvents = 'none';
+      if (remainingSec > 0) {
+        sendBtn.disabled = true;
+        sendSpinner.style.display = 'none';
+        sendText.style.display = 'inline';
+        sendText.innerText = `{% trans "Resend in" %} ${remainingSec}s`;
       } else {
-        clearInterval(cooldownTimer);
+        clearInterval(cooldownInterval);
+        sessionStorage.removeItem('nearby_otp_expiry');
         sendBtn.disabled = false;
-        sendText.innerText = '{% trans "Send OTP" %}';
-        resendBtn.innerText = '{% trans "Resend Code" %}';
-        resendBtn.style.opacity = '1';
-        resendBtn.style.pointerEvents = 'auto';
+        sendSpinner.style.display = 'none';
+        sendText.style.display = 'inline';
+        sendText.innerText = '{% trans "Resend OTP" %}';
       }
-    }, 1000);
+    }
+
+    update();
+    cooldownInterval = setInterval(update, 500);
   }
+
+  // Restore cooldown if active on load or app wake-up
+  function restoreCooldownIfActive() {
+    const expiry = parseInt(sessionStorage.getItem('nearby_otp_expiry') || '0', 10);
+    if (expiry > Date.now()) {
+      startCooldown(expiry);
+    }
+  }
+
+  window.addEventListener('pageshow', restoreCooldownIfActive);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      restoreCooldownIfActive();
+    }
+  });
+
+  // 6-Digit Segmented OTP Input Handling (Auto-focus, Backspace, Paste)
+  document.addEventListener('DOMContentLoaded', () => {
+    restoreCooldownIfActive();
+
+    const boxes = document.querySelectorAll('.otp-digit-cell');
+    const hiddenOtp = document.getElementById('id_otp');
+
+    function syncHiddenOtp() {
+      let otpValue = '';
+      boxes.forEach(box => {
+        otpValue += box.value.trim();
+      });
+      hiddenOtp.value = otpValue;
+      return otpValue;
+    }
+
+    boxes.forEach((box, index) => {
+      // Input event: auto-advance
+      box.addEventListener('input', (e) => {
+        const val = box.value.replace(/[^0-9]/g, '');
+        box.value = val ? val.slice(-1) : '';
+
+        if (box.value) {
+          box.classList.add('filled');
+          if (index < boxes.length - 1) {
+            boxes[index + 1].focus();
+          }
+        } else {
+          box.classList.remove('filled');
+        }
+        syncHiddenOtp();
+      });
+
+      // Keydown event: Backspace support
+      box.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace') {
+          if (!box.value && index > 0) {
+            boxes[index - 1].focus();
+            boxes[index - 1].value = '';
+            boxes[index - 1].classList.remove('filled');
+          } else {
+            box.value = '';
+            box.classList.remove('filled');
+          }
+          syncHiddenOtp();
+        } else if (e.key === 'ArrowLeft' && index > 0) {
+          boxes[index - 1].focus();
+        } else if (e.key === 'ArrowRight' && index < boxes.length - 1) {
+          boxes[index + 1].focus();
+        }
+      });
+
+      // Paste event: Support pasting 6-digit code
+      box.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const pastedData = (e.clipboardData || window.clipboardData).getData('text');
+        const digits = pastedData.replace(/[^0-9]/g, '').slice(0, 6);
+        
+        if (digits) {
+          digits.split('').forEach((d, i) => {
+            if (i < boxes.length) {
+              boxes[i].value = d;
+              boxes[i].classList.add('filled');
+            }
+          });
+          const nextIndex = Math.min(digits.length, boxes.length - 1);
+          boxes[nextIndex].focus();
+          syncHiddenOtp();
+        }
+      });
+    });
+
+    // Populate boxes if form returned with value (e.g. on validation error)
+    if (hiddenOtp.value) {
+      const existing = hiddenOtp.value.split('');
+      existing.forEach((d, i) => {
+        if (i < boxes.length) {
+          boxes[i].value = d;
+          boxes[i].classList.add('filled');
+        }
+      });
+    }
+
+    // Client-side password confirmation match check
+    const pw = document.getElementById('id_password');
+    const confirmPw = document.getElementById('id_confirm_password');
+    const matchFeedback = document.getElementById('password-match-feedback');
+
+    function checkPasswordMatch() {
+      if (confirmPw.value && pw.value !== confirmPw.value) {
+        matchFeedback.style.display = 'block';
+        matchFeedback.innerText = '{% trans "Passwords do not match." %}';
+      } else {
+        matchFeedback.style.display = 'none';
+      }
+    }
+
+    pw.addEventListener('input', checkPasswordMatch);
+    confirmPw.addEventListener('input', checkPasswordMatch);
+  });
 </script>
 {% endblock %}

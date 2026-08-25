@@ -157,8 +157,8 @@ class ReferralAndBadgeTests(TestCase):
         )
 
         reg_resp = self.client.post('/accounts/register/', {
-            'auth_type': 'email',
-            'identifier': email,
+            'name': 'New Friend',
+            'email': email,
             'otp': raw_otp,
             'password': 'StrongPassword123!',
             'confirm_password': 'StrongPassword123!',

@@ -9,7 +9,8 @@ from django.utils.translation import gettext_lazy as _
 from django.http import JsonResponse, HttpResponseForbidden
 from django.db import transaction
 from django.views.decorators.http import require_POST
-from rest_framework.decorators import api_view, permission_classes
+import re
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
@@ -24,10 +25,9 @@ User = get_user_model()
 
 def register_view(request):
     """
-    Step 1 Registration:
-    Asks ONLY for Email or Phone + OTP + Password.
-    Automatically assigns a unique temporary name (e.g. User 4821) and deterministic avatar.
-    Redirects to Step 2 Onboarding (/accounts/onboarding/).
+    Sign Up View:
+    Asks for Name, Email, 6-digit OTP, and Password.
+    Creates authenticated account with real Brevo OTP verification.
     """
     if request.user.is_authenticated:
         return redirect('core:home')
@@ -35,31 +35,25 @@ def register_view(request):
     if request.method == 'POST':
         form = AccountRegisterForm(request.POST)
         if form.is_valid():
-            auth_type = form.cleaned_data['auth_type']
-            identifier = form.cleaned_data['identifier']
+            name = form.cleaned_data.get('name', '').strip()
+            email = form.cleaned_data['email']
             password = form.cleaned_data['password']
 
             with transaction.atomic():
-                username, default_display_name, preset = generate_unique_user_identity()
-                
-                if '@' in identifier:
-                    email = identifier
-                    phone_number = None
-                else:
-                    email = f"{username}@nearbychat.internal"
-                    phone_number = identifier
+                username, fallback_display_name, preset = generate_unique_user_identity()
+                display_name = name if name else fallback_display_name
 
                 user = User.objects.create_user(
                     username=username,
                     email=email,
-                    phone_number=phone_number,
+                    phone_number=None,
                     password=password,
                     is_verified=True
                 )
 
                 if hasattr(user, 'profile'):
-                    user.profile.display_name = default_display_name
-                    user.profile.is_temporary_name = True
+                    user.profile.display_name = display_name
+                    user.profile.is_temporary_name = not bool(name)
                     user.profile.avatar_preset = preset
                     user.profile.save()
 
@@ -71,8 +65,8 @@ def register_view(request):
                 ip = request.META.get('REMOTE_ADDR')
                 ReferralService.record_referral(invite_code=invite_code, referred_user=user, ip_address=ip)
 
-            messages.success(request, _('Account created successfully! Now set up your profile.'))
-            return redirect('accounts:onboarding')
+            messages.success(request, _('Welcome to Nearby Chat, %(name)s!') % {'name': display_name})
+            return redirect('core:home')
     else:
         form = AccountRegisterForm()
 
@@ -269,48 +263,50 @@ def delete_account_view(request):
 # ==============================================================================
 
 @api_view(['POST'])
+@authentication_classes([])
 @permission_classes([AllowAny])
 def send_otp_api(request):
-    """Dispatches a real OTP to the given phone or email."""
-    identifier = request.data.get('identifier', '').strip()
+    """
+    Dispatches a real OTP via Brevo API to the given email.
+    Strictly validates email format and duplicate checks before sending.
+    """
+    email = (request.data.get('email') or request.data.get('identifier') or '').strip()
     purpose = request.data.get('purpose', 'signup')
 
-    if not identifier:
-        return Response({'error': _('Phone number or email is required.')}, status=status.HTTP_400_BAD_REQUEST)
+    if not email:
+        return Response({'success': False, 'error': _('Please enter your email address.')}, status=status.HTTP_400_BAD_REQUEST)
+
+    email_clean = email.lower()
+    if not re.match(r'^[\w\.\+\-]+@[\w\.\-]+\.\w+$', email_clean):
+        return Response({'success': False, 'error': _('Please enter a valid email address (e.g. you@example.com).')}, status=status.HTTP_400_BAD_REQUEST)
 
     if purpose == 'signup':
-        if '@' in identifier:
-            if User.objects.filter(email__iexact=identifier.lower()).exists():
-                return Response({'error': _('An account with this email already exists.')}, status=status.HTTP_400_BAD_REQUEST)
-        else:
-            clean_digits = ''.join(c for c in identifier if c.isdigit())
-            if len(clean_digits) >= 10:
-                phone_std = clean_digits[-10:]
-                if User.objects.filter(phone_number=phone_std).exists():
-                    return Response({'error': _('An account with this phone number already exists.')}, status=status.HTTP_400_BAD_REQUEST)
+        if User.objects.filter(email__iexact=email_clean).exists():
+            return Response({'success': False, 'error': _('An account with this email already exists.')}, status=status.HTTP_400_BAD_REQUEST)
 
     ip_address = request.META.get('REMOTE_ADDR')
-    success, msg, cooldown = VerificationService.send_otp_challenge(identifier, purpose, ip_address=ip_address)
+    success, msg, cooldown = VerificationService.send_otp_challenge(email_clean, purpose, ip_address=ip_address)
     if success:
-        return Response({'success': True, 'message': msg, 'cooldown': cooldown, 'status': 'sent'})
+        return Response({'success': True, 'message': msg, 'cooldown': cooldown or 60, 'status': 'sent'})
     return Response({'success': False, 'error': msg, 'cooldown': cooldown}, status=status.HTTP_429_TOO_MANY_REQUESTS if cooldown > 0 else status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['POST'])
+@authentication_classes([])
 @permission_classes([AllowAny])
 def verify_otp_api(request):
     """Validates the supplied OTP."""
-    identifier = request.data.get('identifier', '').strip()
+    email = (request.data.get('email') or request.data.get('identifier') or '').strip()
     otp = request.data.get('otp', '').strip()
     purpose = request.data.get('purpose', 'signup')
 
-    if not identifier or not otp:
-        return Response({'error': _('Identifier and OTP are required.')}, status=status.HTTP_400_BAD_REQUEST)
+    if not email or not otp:
+        return Response({'success': False, 'error': _('Email and OTP are required.')}, status=status.HTTP_400_BAD_REQUEST)
 
-    is_valid, msg = VerificationService.verify_otp_challenge(identifier, otp, purpose)
+    is_valid, msg = VerificationService.verify_otp_challenge(email, otp, purpose)
     if is_valid:
-        return Response({'message': msg, 'verified': True})
-    return Response({'error': msg}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'success': True, 'message': msg, 'verified': True})
+    return Response({'success': False, 'error': msg}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['POST'])
