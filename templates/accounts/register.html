@@ -4,8 +4,8 @@
 {% block title %}{% trans "Create Account" %} — Nearby Chat{% endblock %}
 
 {% block content %}
-<div style="max-width: 440px; margin: var(--space-6) auto; padding: 0 var(--space-4);">
-  <div class="card" style="box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35); border-radius: var(--radius-xl); border: 1px solid var(--border-color);">
+<div class="auth-wrapper" style="width: 100%; max-width: 440px; margin: var(--space-4) auto; box-sizing: border-box;">
+  <div class="card" style="box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35); border-radius: var(--radius-xl); border: 1px solid var(--border-color); width: 100%; max-width: 100%; box-sizing: border-box; overflow: hidden;">
     
     <!-- Header Brand -->
     <div style="text-align: center; margin-bottom: var(--space-5);">
@@ -22,11 +22,11 @@
       <span style="font-size: 12px; color: var(--text-secondary); font-weight: 500;">{% trans "Account Details" %}</span>
     </div>
 
-    <form method="post" action="{% url 'accounts:register' %}" id="register-form">
+    <form method="post" action="{% url 'accounts:register' %}" id="register-form" style="width: 100%; max-width: 100%; box-sizing: border-box;">
       {% csrf_token %}
 
       {% if form.non_field_errors %}
-        <div style="background-color: var(--error-bg); color: var(--error-text); padding: var(--space-3); border-radius: var(--radius-md); font-size: var(--text-sm); margin-bottom: var(--space-4);">
+        <div style="background-color: var(--error-bg); color: var(--error-text); padding: var(--space-3); border-radius: var(--radius-md); font-size: var(--text-sm); margin-bottom: var(--space-4); word-break: break-word;">
           {{ form.non_field_errors }}
         </div>
       {% endif %}
@@ -35,21 +35,21 @@
       <div class="form-group">
         <label class="form-label" for="id_name">{% trans "Name" %}</label>
         <input type="text" name="name" id="id_name" class="input-field" placeholder="{% trans 'Enter your name' %}" value="{{ form.name.value|default:'' }}" required autocomplete="name">
-        {% if form.name.errors %}<span style="color:var(--error);font-size:var(--text-xs);">{{ form.name.errors.0 }}</span>{% endif %}
+        {% if form.name.errors %}<span style="color:var(--error);font-size:var(--text-xs);word-break:break-word;">{{ form.name.errors.0 }}</span>{% endif %}
       </div>
 
       <!-- 2. Email Address with Send OTP Action -->
       <div class="form-group">
         <label class="form-label" for="id_email">{% trans "Email" %}</label>
-        <div style="display: flex; gap: 8px;">
-          <input type="email" name="email" id="id_email" class="input-field" placeholder="you@example.com" value="{{ form.email.value|default:'' }}" required autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" style="flex: 1;">
-          <button type="button" id="send-otp-btn" class="btn btn-secondary" onclick="requestOTP()" style="white-space: nowrap; font-size: var(--text-xs); padding: 0 14px; font-weight: 600;">
+        <div style="display: flex; gap: 8px; width: 100%; max-width: 100%; box-sizing: border-box;">
+          <input type="email" name="email" id="id_email" class="input-field" placeholder="you@example.com" value="{{ form.email.value|default:'' }}" required autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" style="flex: 1 1 auto; min-width: 0; width: 0;">
+          <button type="button" id="send-otp-btn" class="btn btn-secondary" onclick="requestOTP()" style="white-space: nowrap; font-size: var(--text-xs); padding: 0 14px; font-weight: 600; flex-shrink: 0;">
             <span id="send-otp-text">{% trans "Send OTP" %}</span>
             <span id="send-otp-spinner" class="spinner-sm" style="display: none;"></span>
           </button>
         </div>
-        <div id="otp-feedback" style="font-size: var(--text-xs); margin-top: 4px; display: none;"></div>
-        {% if form.email.errors %}<span style="color:var(--error);font-size:var(--text-xs);">{{ form.email.errors.0 }}</span>{% endif %}
+        <div id="otp-feedback" style="font-size: var(--text-xs); margin-top: 4px; display: none; word-break: break-word;"></div>
+        {% if form.email.errors %}<span style="color:var(--error);font-size:var(--text-xs);word-break:break-word;">{{ form.email.errors.0 }}</span>{% endif %}
       </div>
 
       <!-- 3. OTP (6 digits) -->
@@ -60,8 +60,8 @@
             {% trans "Resend Code" %}
           </button>
         </div>
-        <input type="text" name="otp" id="id_otp" class="input-field" placeholder="• • • • • •" maxlength="6" pattern="[0-9]{6}" inputmode="numeric" autocomplete="one-time-code" required style="font-family: monospace; font-size: var(--text-lg); letter-spacing: 6px; text-align: center;">
-        {% if form.otp.errors %}<span style="color:var(--error);font-size:var(--text-xs);display:block;margin-top:4px;">{{ form.otp.errors.0 }}</span>{% endif %}
+        <input type="text" name="otp" id="id_otp" class="input-field" placeholder="• • • • • •" maxlength="6" pattern="[0-9]{6}" inputmode="numeric" autocomplete="one-time-code" required style="font-family: monospace; font-size: var(--text-lg); letter-spacing: 6px; text-align: center; width: 100%; max-width: 100%; box-sizing: border-box;">
+        {% if form.otp.errors %}<span style="color:var(--error);font-size:var(--text-xs);display:block;margin-top:4px;word-break:break-word;">{{ form.otp.errors.0 }}</span>{% endif %}
       </div>
 
       <!-- 4. Password Field -->

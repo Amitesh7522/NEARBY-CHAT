@@ -4,15 +4,15 @@
 {% block title %}{% trans "Log In" %} — Nearby Chat{% endblock %}
 
 {% block content %}
-<div style="max-width: 420px; margin: var(--space-6) auto;">
-  <div class="card">
+<div class="auth-wrapper" style="width: 100%; max-width: 420px; margin: var(--space-4) auto; box-sizing: border-box;">
+  <div class="card" style="box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35); border-radius: var(--radius-xl); border: 1px solid var(--border-color); width: 100%; max-width: 100%; box-sizing: border-box; overflow: hidden;">
     <div style="text-align: center; margin-bottom: var(--space-6);">
       <img src="{% static 'images/icon.svg' %}" alt="Nearby Chat Icon" style="width: 56px; height: 56px; margin: 0 auto var(--space-3); border-radius: 16px; box-shadow: 0 8px 24px rgba(99, 102, 241, 0.25);">
       <h2>{% trans "Welcome Back" %}</h2>
       <p style="font-size: var(--text-sm); margin-top: 4px;">{% trans "Connect with people nearby in real-time." %}</p>
     </div>
 
-    <form method="post" action="{% url 'accounts:login' %}{% if request.GET.next %}?next={{ request.GET.next }}{% endif %}">
+    <form method="post" action="{% url 'accounts:login' %}{% if request.GET.next %}?next={{ request.GET.next }}{% endif %}" style="width: 100%; max-width: 100%; box-sizing: border-box;">
       {% csrf_token %}
       
       {% if form.non_field_errors %}
