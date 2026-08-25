@@ -16,11 +16,11 @@
         {% blocktrans with name=profile.get_display_name %}Welcome, {{ name }}!{% endblocktrans %}
       </h2>
       <p style="color: var(--text-secondary); font-size: var(--text-sm); line-height: 1.5; margin: 0;">
-        {% trans "Personalize your profile to connect with people nearby who share your passions." %}
+        {% trans "Select your preferences to connect with people nearby who share your passions." %}
       </p>
     </div>
 
-    <form method="post" enctype="multipart/form-data" action="{% url 'accounts:onboarding' %}" id="onboarding-form">
+    <form method="post" action="{% url 'accounts:onboarding' %}" id="onboarding-form">
       {% csrf_token %}
 
       {% if form.non_field_errors %}
@@ -62,7 +62,7 @@
       </div>
 
       <!-- 2. Interests Section (Requires at least 3, max 5) -->
-      <div class="form-group" style="background: var(--bg-surface); padding: var(--space-4); border-radius: var(--radius-lg); border: 1px solid var(--border-color); margin-bottom: var(--space-4);">
+      <div class="form-group" style="background: var(--bg-surface); padding: var(--space-4); border-radius: var(--radius-lg); border: 1px solid var(--border-color); margin-bottom: var(--space-5);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
           <label class="form-label" style="font-weight: 700; margin: 0;">
             {% trans "2. Interests & Passions (Choose 3 to 5)" %}
@@ -90,45 +90,6 @@
         {% if form.interests.errors %}<span style="color:var(--error);font-size:var(--text-xs);display:block;margin-top:6px;">{{ form.interests.errors.0 }}</span>{% endif %}
       </div>
 
-      <!-- 3. Profile Photo / Avatar Section -->
-      <div class="form-group" style="background: var(--bg-surface); padding: var(--space-4); border-radius: var(--radius-lg); border: 1px solid var(--border-color); margin-bottom: var(--space-5);">
-        <label class="form-label" style="font-weight: 700; margin-bottom: 4px;">
-          {% trans "3. Profile Photo / Avatar" %}
-        </label>
-        <p style="font-size: var(--text-xs); color: var(--text-secondary); margin-top: 0; margin-bottom: var(--space-3);">
-          {% trans "Upload your photo or select a cartoon avatar preset." %}
-        </p>
-
-        <div style="display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-4);">
-          <!-- Live Preview Avatar -->
-          <div style="position: relative; width: 72px; height: 72px; flex-shrink: 0;">
-            <img id="avatar-preview" src="{{ profile.get_avatar_url }}" alt="Avatar Preview" class="avatar" style="width: 72px; height: 72px; border-radius: 50%; object-fit: cover; border: 2.5px solid var(--primary); box-shadow: 0 4px 14px rgba(99, 102, 241, 0.25);">
-          </div>
-
-          <div style="flex: 1;">
-            <label for="id_avatar_input" class="btn btn-sm btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; margin-bottom: 6px;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-              {% trans "Upload Photo" %}
-            </label>
-            <input type="file" name="avatar" id="id_avatar_input" accept="image/*" style="display: none;" onchange="previewUploadedImage(this)">
-            <input type="hidden" name="avatar_preset" id="id_avatar_preset" value="{{ profile.avatar_preset|default:'fox' }}">
-            <p style="font-size: 11px; color: var(--text-secondary); margin: 0;">{% trans "PNG, JPG or WebP up to 5MB." %}</p>
-          </div>
-        </div>
-
-        <!-- Illustrated Avatar Preset Options -->
-        <label class="form-label" style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
-          {% trans "Or choose a default cartoon avatar" %}
-        </label>
-        <div style="display: flex; gap: 10px; flex-wrap: wrap;" id="preset-container">
-          {% for preset in preset_avatars %}
-            <button type="button" class="preset-btn {% if profile.avatar_preset == preset and not profile.avatar %}active{% endif %}" onclick="selectPreset('{{ preset }}')" style="width: 44px; height: 44px; padding: 4px; border-radius: 50%; border: 2px solid {% if profile.avatar_preset == preset and not profile.avatar %}var(--primary){% else %}transparent{% endif %}; background: var(--bg-card); cursor: pointer; transition: all 0.2s;">
-              <img src="/static/images/avatars/{{ preset }}.svg" alt="{{ preset }}" style="width: 100%; height: 100%; object-fit: contain;">
-            </button>
-          {% endfor %}
-        </div>
-      </div>
-
       <!-- Actions: Save & Continue vs Skip for now -->
       <div style="display: flex; flex-direction: column; gap: var(--space-3);">
         <button type="submit" id="save-btn" class="btn btn-primary" style="width: 100%; padding: var(--space-3); font-weight: 700; font-size: var(--text-sm); box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);">
@@ -146,35 +107,6 @@
 </div>
 
 <script>
-  function selectPreset(presetName) {
-    document.getElementById('id_avatar_preset').value = presetName;
-    document.getElementById('avatar-preview').src = '/static/images/avatars/' + presetName + '.svg';
-    
-    // Clear file input if a preset is picked
-    const fileInput = document.getElementById('id_avatar_input');
-    if (fileInput) fileInput.value = '';
-
-    // Update active border on preset buttons
-    document.querySelectorAll('#preset-container .preset-btn').forEach(btn => {
-      btn.style.borderColor = 'transparent';
-    });
-    event.currentTarget.style.borderColor = 'var(--primary)';
-  }
-
-  function previewUploadedImage(input) {
-    if (input.files && input.files[0]) {
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        document.getElementById('avatar-preview').src = e.target.result;
-        // Deselect presets
-        document.querySelectorAll('#preset-container .preset-btn').forEach(btn => {
-          btn.style.borderColor = 'transparent';
-        });
-      };
-      reader.readAsDataURL(input.files[0]);
-    }
-  }
-
   function updateGenderStyle(radio) {
     document.querySelectorAll('.gender-pill').forEach(pill => {
       const btn = pill.querySelector('.gender-btn');

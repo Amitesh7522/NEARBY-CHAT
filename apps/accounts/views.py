@@ -82,7 +82,7 @@ def register_view(request):
 def onboarding_view(request):
     """
     Step 2 Onboarding (100% Optional):
-    Allows user to personalize Gender, Interests (Min 3), and Profile Avatar.
+    Allows user to personalize Gender and Interests (Min 3).
     Reuses Name already saved during signup.
     User can click 'Skip for now' or 'Save & Continue' to enter Home.
     """
@@ -94,26 +94,18 @@ def onboarding_view(request):
         return redirect('core:home')
 
     if request.method == 'POST':
-        form = OnboardingProfileForm(request.POST, request.FILES, instance=profile)
+        form = OnboardingProfileForm(request.POST, instance=profile)
         if form.is_valid():
-            saved_profile = form.save(commit=False)
-            if 'avatar' in request.FILES and request.FILES['avatar']:
-                saved_profile.avatar_preset = ''
-            saved_profile.save()
-            form.save_m2m()
-
+            form.save()
             messages.success(request, _('Profile updated! Welcome to Nearby Chat.'))
             return redirect('core:home')
     else:
         form = OnboardingProfileForm(instance=profile)
 
-    preset_keys = ['fox', 'panda', 'cat', 'robot', 'astro', 'lion', 'bear', 'alien']
-
     return render(request, 'accounts/onboarding.html', {
         'form': form,
         'profile': profile,
         'all_interests': Interest.objects.all(),
-        'preset_avatars': preset_keys,
     })
 
 

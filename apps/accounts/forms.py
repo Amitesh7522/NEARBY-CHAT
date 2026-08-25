@@ -122,7 +122,6 @@ class OnboardingProfileForm(forms.ModelForm):
     Asks ONLY for:
     1. Gender
     2. Interests (Requires at least 3, max 5)
-    3. Profile photo/avatar (Upload or Preset)
     Reuses Name already collected during signup.
     """
     interests = forms.ModelMultipleChoiceField(
@@ -139,10 +138,7 @@ class OnboardingProfileForm(forms.ModelForm):
 
     class Meta:
         model = Profile
-        fields = ['gender', 'interests', 'avatar', 'avatar_preset']
-        widgets = {
-            'avatar_preset': forms.HiddenInput(),
-        }
+        fields = ['gender', 'interests']
 
     def clean_interests(self):
         interests = self.cleaned_data.get('interests')

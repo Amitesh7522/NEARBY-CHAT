@@ -120,9 +120,8 @@ class OnboardingAndAuthTests(TestCase):
         get_resp = self.client.get(reverse('accounts:onboarding'))
         self.assertEqual(get_resp.status_code, 200)
 
-        # POST profile details (Gender, Interests, Avatar)
+        # POST profile details (Gender and min 3 Interests)
         post_data = {
-            'avatar_preset': 'panda',
             'gender': 'female',
             'interests': [self.gaming.id, self.music.id, self.tech.id]
         }
@@ -133,7 +132,6 @@ class OnboardingAndAuthTests(TestCase):
         self.assertEqual(user.profile.display_name, 'Maya Patel')
         self.assertFalse(user.profile.is_temporary_name)
         self.assertEqual(user.profile.gender, 'female')
-        self.assertEqual(user.profile.avatar_preset, 'panda')
         self.assertEqual(user.profile.interests.count(), 3)
         self.assertTrue(user.profile.is_profile_completed)
 
@@ -172,7 +170,6 @@ class OnboardingAndAuthTests(TestCase):
         # 1. Fewer than 3 interests
         post_data_under = {
             'gender': 'male',
-            'avatar_preset': 'fox',
             'interests': [self.gaming.id, self.music.id]
         }
         resp1 = self.client.post(reverse('accounts:onboarding'), data=post_data_under)
@@ -183,7 +180,6 @@ class OnboardingAndAuthTests(TestCase):
         anime = Interest.objects.create(name='Anime', slug='anime', emoji='🎞️')
         post_data_over = {
             'gender': 'male',
-            'avatar_preset': 'fox',
             'interests': [self.gaming.id, self.music.id, self.tech.id, self.travel.id, self.food.id, anime.id]
         }
         resp2 = self.client.post(reverse('accounts:onboarding'), data=post_data_over)
