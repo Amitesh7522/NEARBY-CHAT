@@ -57,8 +57,8 @@ class OnboardingAndAuthTests(TestCase):
         otp_rec.save()
 
         form_data = {
-            'auth_type': 'email',
-            'identifier': email,
+            'name': 'Rohan Sharma',
+            'email': email,
             'otp': raw_otp,
             'password': 'SecurePassword123!',
             'confirm_password': 'SecurePassword123!',
@@ -68,46 +68,38 @@ class OnboardingAndAuthTests(TestCase):
         # Should redirect to Step 2 Onboarding
         self.assertRedirects(resp, reverse('accounts:onboarding'))
 
-        # Check that user and profile exist with temporary identity
+        # Check that user and profile exist with specified name
         user = User.objects.filter(email=email).first()
         self.assertIsNotNone(user)
         self.assertTrue(user.is_verified)
         self.assertTrue(user.username.startswith('user_'))
-        self.assertTrue(user.profile.is_temporary_name)
-        self.assertTrue(user.profile.display_name.startswith('User '))
+        self.assertFalse(user.profile.is_temporary_name)
+        self.assertEqual(user.profile.display_name, 'Rohan Sharma')
         self.assertIn(user.profile.avatar_preset, PRESET_AVATARS)
 
-    def test_step1_registration_with_phone_number(self):
-        """Step 1: User signs up with Phone Number + Real OTP + Password."""
-        from django.utils import timezone
-        from datetime import timedelta
-        phone = "9876543299"
-        
-        from apps.accounts.models import OTPVerification
-        from apps.accounts.services import hash_otp
+    def test_signup_validation_for_name_and_email(self):
+        """Validates that Sign Up strictly requires Name and valid Email."""
+        # Missing Name
+        resp1 = self.client.post(reverse('accounts:register'), data={
+            'name': '',
+            'email': 'user@example.com',
+            'otp': '123456',
+            'password': 'SecurePassword123!',
+            'confirm_password': 'SecurePassword123!',
+        })
+        self.assertEqual(resp1.status_code, 200)
+        self.assertIn('name', resp1.context['form'].errors)
 
-        raw_otp = "123456"
-        OTPVerification.objects.create(
-            identifier=phone,
-            otp_hash=hash_otp(raw_otp),
-            purpose='signup',
-            expires_at=timezone.now() + timedelta(minutes=10),
-        )
-
-        form_data = {
-            'auth_type': 'phone',
-            'identifier': phone,
-            'otp': raw_otp,
-            'password': 'PhonePassword123!',
-            'confirm_password': 'PhonePassword123!',
-        }
-
-        resp = self.client.post(reverse('accounts:register'), data=form_data)
-        self.assertRedirects(resp, reverse('accounts:onboarding'))
-
-        user = User.objects.filter(phone_number=phone).first()
-        self.assertIsNotNone(user)
-        self.assertTrue(user.profile.is_temporary_name)
+        # Invalid Email
+        resp2 = self.client.post(reverse('accounts:register'), data={
+            'name': 'Valid Name',
+            'email': 'invalid-email-format',
+            'otp': '123456',
+            'password': 'SecurePassword123!',
+            'confirm_password': 'SecurePassword123!',
+        })
+        self.assertEqual(resp2.status_code, 200)
+        self.assertIn('email', resp2.context['form'].errors)
 
     def test_step2_onboarding_save_profile(self):
         """Step 2: User customizes Name, Gender, Avatar, and Interests."""

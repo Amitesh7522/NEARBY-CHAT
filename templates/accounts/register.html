@@ -7,7 +7,7 @@
 <div style="max-width: 440px; margin: var(--space-6) auto; padding: 0 var(--space-4);">
   <div class="card" style="box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35); border-radius: var(--radius-xl); border: 1px solid var(--border-color);">
     
-    <!-- Header Brand & Step 1 Indicator -->
+    <!-- Header Brand -->
     <div style="text-align: center; margin-bottom: var(--space-5);">
       <img src="{% static 'images/icon.svg' %}" alt="Nearby Chat" style="width: 52px; height: 52px; margin: 0 auto var(--space-3); border-radius: 14px; box-shadow: 0 8px 20px rgba(99, 102, 241, 0.25);">
       <h2 style="font-size: var(--text-2xl); font-weight: 800; letter-spacing: -0.5px; margin-bottom: 4px;">{% trans "Create your account" %}</h2>
@@ -22,19 +22,8 @@
       <span style="font-size: 12px; color: var(--text-secondary); font-weight: 500;">{% trans "Account Details" %}</span>
     </div>
 
-    <!-- Auth Mode Toggle (Email vs Phone) -->
-    <div style="display: grid; grid-template-columns: 1fr 1fr; background: var(--bg-surface); padding: 4px; border-radius: var(--radius-lg); border: 1px solid var(--border-color); margin-bottom: var(--space-4);">
-      <button type="button" id="tab-email" class="btn btn-sm" onclick="switchAuthTab('email')" style="background: var(--primary); color: #fff; font-weight: 600; border-radius: var(--radius-md); transition: all 0.2s;">
-        ✉️ {% trans "Email" %}
-      </button>
-      <button type="button" id="tab-phone" class="btn btn-sm" onclick="switchAuthTab('phone')" style="background: transparent; color: var(--text-secondary); font-weight: 600; border-radius: var(--radius-md); transition: all 0.2s;">
-        📱 {% trans "Phone Number" %}
-      </button>
-    </div>
-
     <form method="post" action="{% url 'accounts:register' %}" id="register-form">
       {% csrf_token %}
-      <input type="hidden" name="auth_type" id="auth_type_input" value="email">
 
       {% if form.non_field_errors %}
         <div style="background-color: var(--error-bg); color: var(--error-text); padding: var(--space-3); border-radius: var(--radius-md); font-size: var(--text-sm); margin-bottom: var(--space-4);">
@@ -42,24 +31,31 @@
         </div>
       {% endif %}
 
-      <!-- Identifier Field (Email / Phone) with Send OTP Action -->
+      <!-- 1. Name -->
       <div class="form-group">
-        <label class="form-label" id="identifier-label" for="id_identifier">{% trans "Email Address" %}</label>
+        <label class="form-label" for="id_name">{% trans "Name" %}</label>
+        <input type="text" name="name" id="id_name" class="input-field" placeholder="{% trans 'Enter your name' %}" value="{{ form.name.value|default:'' }}" required autocomplete="name">
+        {% if form.name.errors %}<span style="color:var(--error);font-size:var(--text-xs);">{{ form.name.errors.0 }}</span>{% endif %}
+      </div>
+
+      <!-- 2. Email Address with Send OTP Action -->
+      <div class="form-group">
+        <label class="form-label" for="id_email">{% trans "Email" %}</label>
         <div style="display: flex; gap: 8px;">
-          <input type="text" name="identifier" id="id_identifier" class="input-field" placeholder="you@example.com" value="{{ form.identifier.value|default:'' }}" required autocomplete="username" style="flex: 1;">
+          <input type="email" name="email" id="id_email" class="input-field" placeholder="you@example.com" value="{{ form.email.value|default:'' }}" required autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" style="flex: 1;">
           <button type="button" id="send-otp-btn" class="btn btn-secondary" onclick="requestOTP()" style="white-space: nowrap; font-size: var(--text-xs); padding: 0 14px; font-weight: 600;">
             <span id="send-otp-text">{% trans "Send OTP" %}</span>
             <span id="send-otp-spinner" class="spinner-sm" style="display: none;"></span>
           </button>
         </div>
         <div id="otp-feedback" style="font-size: var(--text-xs); margin-top: 4px; display: none;"></div>
-        {% if form.identifier.errors %}<span style="color:var(--error);font-size:var(--text-xs);">{{ form.identifier.errors.0 }}</span>{% endif %}
+        {% if form.email.errors %}<span style="color:var(--error);font-size:var(--text-xs);">{{ form.email.errors.0 }}</span>{% endif %}
       </div>
 
-      <!-- 6-digit OTP Input -->
+      <!-- 3. OTP (6 digits) -->
       <div class="form-group" id="otp-container">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-1);">
-          <label class="form-label" for="id_otp" style="margin: 0;">{% trans "Verification Code (OTP)" %}</label>
+          <label class="form-label" for="id_otp" style="margin: 0;">{% trans "OTP" %}</label>
           <button type="button" id="resend-otp-btn" onclick="requestOTP()" style="background: none; border: none; color: var(--primary); font-size: var(--text-xs); cursor: pointer; padding: 0; display: none; font-weight: 600;">
             {% trans "Resend Code" %}
           </button>
@@ -68,22 +64,23 @@
         {% if form.otp.errors %}<span style="color:var(--error);font-size:var(--text-xs);display:block;margin-top:4px;">{{ form.otp.errors.0 }}</span>{% endif %}
       </div>
 
-      <!-- Password Field -->
+      <!-- 4. Password Field -->
       <div class="form-group">
-        <label class="form-label" for="id_password">{% trans "Password (Min 8 characters)" %}</label>
+        <label class="form-label" for="id_password">{% trans "Password" %}</label>
         <input type="password" name="password" id="id_password" class="input-field" placeholder="••••••••" minlength="8" required autocomplete="new-password">
         {% if form.password.errors %}<span style="color:var(--error);font-size:var(--text-xs);">{{ form.password.errors.0 }}</span>{% endif %}
       </div>
 
-      <!-- Confirm Password Field -->
+      <!-- 5. Confirm Password Field -->
       <div class="form-group">
         <label class="form-label" for="id_confirm_password">{% trans "Confirm Password" %}</label>
         <input type="password" name="confirm_password" id="id_confirm_password" class="input-field" placeholder="••••••••" minlength="8" required autocomplete="new-password">
         {% if form.confirm_password.errors %}<span style="color:var(--error);font-size:var(--text-xs);">{{ form.confirm_password.errors.0 }}</span>{% endif %}
       </div>
 
+      <!-- 6. Create Account Button -->
       <button type="submit" id="submit-btn" class="btn btn-primary" style="width: 100%; margin-top: var(--space-4); padding: var(--space-3); font-weight: 700; font-size: var(--text-sm); box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);">
-        {% trans "Create Account & Continue" %} →
+        {% trans "Create Account" %} →
       </button>
     </form>
 
@@ -96,54 +93,37 @@
 </div>
 
 <script>
-  let currentAuthType = 'email';
   let cooldownTimer = null;
-  let remainingSeconds = 0;
 
-  function switchAuthTab(type) {
-    currentAuthType = type;
-    document.getElementById('auth_type_input').value = type;
-    
-    const emailTab = document.getElementById('tab-email');
-    const phoneTab = document.getElementById('tab-phone');
-    const label = document.getElementById('identifier-label');
-    const input = document.getElementById('id_identifier');
-    
-    if (type === 'email') {
-      emailTab.style.background = 'var(--primary)';
-      emailTab.style.color = '#fff';
-      phoneTab.style.background = 'transparent';
-      phoneTab.style.color = 'var(--text-secondary)';
-      label.innerText = '{% trans "Email Address" %}';
-      input.placeholder = 'you@example.com';
-      input.type = 'email';
-    } else {
-      phoneTab.style.background = 'var(--primary)';
-      phoneTab.style.color = '#fff';
-      emailTab.style.background = 'transparent';
-      emailTab.style.color = 'var(--text-secondary)';
-      label.innerText = '{% trans "Phone Number" %}';
-      input.placeholder = 'e.g. 9876543210';
-      input.type = 'tel';
-    }
+  function isCooldownActive() {
+    const expiry = parseInt(sessionStorage.getItem('nearby_otp_expiry') || '0', 10);
+    return expiry > Date.now();
   }
 
   async function requestOTP() {
-    if (remainingSeconds > 0) return;
+    if (isCooldownActive()) return;
 
-    const identifierInput = document.getElementById('id_identifier');
-    const identifier = identifierInput.value.trim();
+    const emailInput = document.getElementById('id_email');
+    const email = emailInput.value.trim().toLowerCase();
     const feedback = document.getElementById('otp-feedback');
     const sendBtn = document.getElementById('send-otp-btn');
     const sendText = document.getElementById('send-otp-text');
     const sendSpinner = document.getElementById('send-otp-spinner');
-    const resendBtn = document.getElementById('resend-otp-btn');
 
-    if (!identifier) {
+    if (!email) {
       feedback.style.display = 'block';
       feedback.style.color = 'var(--error)';
-      feedback.innerText = currentAuthType === 'email' ? '{% trans "Please enter your email address first." %}' : '{% trans "Please enter your phone number first." %}';
-      identifierInput.focus();
+      feedback.innerText = '{% trans "Please enter your email address first." %}';
+      emailInput.focus();
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      feedback.style.display = 'block';
+      feedback.style.color = 'var(--error)';
+      feedback.innerText = '{% trans "Please enter a valid email address." %}';
+      emailInput.focus();
       return;
     }
 
@@ -160,7 +140,8 @@
           'X-CSRFToken': '{{ csrf_token }}',
         },
         body: JSON.stringify({
-          identifier: identifier,
+          identifier: email,
+          email: email,
           purpose: 'signup'
         })
       });
@@ -170,16 +151,26 @@
       if (response.ok && data.success) {
         feedback.style.display = 'block';
         feedback.style.color = 'var(--success, #10b981)';
-        feedback.innerText = '✓ ' + (data.message || '{% trans "Verification code dispatched!" %}');
+        feedback.innerText = '✓ ' + (data.message || '{% trans "Verification code sent to your email." %}');
         document.getElementById('id_otp').focus();
-        startCooldown(data.cooldown || 60);
+        const cooldown = data.cooldown || 60;
+        const expiry = Date.now() + cooldown * 1000;
+        sessionStorage.setItem('nearby_otp_expiry', expiry.toString());
+        startCooldown(expiry);
       } else {
         feedback.style.display = 'block';
         feedback.style.color = 'var(--error)';
-        feedback.innerText = data.error || '{% trans "Failed to send code. Please try again." %}';
-        sendBtn.disabled = false;
-        sendText.style.display = 'inline';
-        sendSpinner.style.display = 'none';
+        feedback.innerText = data.error || data.detail || '{% trans "Failed to send code. Please try again." %}';
+        
+        if (data.cooldown && data.cooldown > 0) {
+          const expiry = Date.now() + data.cooldown * 1000;
+          sessionStorage.setItem('nearby_otp_expiry', expiry.toString());
+          startCooldown(expiry);
+        } else {
+          sendBtn.disabled = false;
+          sendText.style.display = 'inline';
+          sendSpinner.style.display = 'none';
+        }
       }
     } catch (err) {
       feedback.style.display = 'block';
@@ -191,8 +182,7 @@
     }
   }
 
-  function startCooldown(seconds) {
-    remainingSeconds = seconds;
+  function startCooldown(expiryTimestamp) {
     const sendBtn = document.getElementById('send-otp-btn');
     const sendText = document.getElementById('send-otp-text');
     const sendSpinner = document.getElementById('send-otp-spinner');
@@ -205,8 +195,9 @@
 
     if (cooldownTimer) clearInterval(cooldownTimer);
 
-    cooldownTimer = setInterval(() => {
-      remainingSeconds--;
+    function update() {
+      const now = Date.now();
+      const remainingSeconds = Math.max(0, Math.ceil((expiryTimestamp - now) / 1000));
       if (remainingSeconds > 0) {
         sendText.innerText = `(${remainingSeconds}s)`;
         resendBtn.innerText = `{% trans "Resend in" %} (${remainingSeconds}s)`;
@@ -214,13 +205,33 @@
         resendBtn.style.pointerEvents = 'none';
       } else {
         clearInterval(cooldownTimer);
+        sessionStorage.removeItem('nearby_otp_expiry');
         sendBtn.disabled = false;
         sendText.innerText = '{% trans "Send OTP" %}';
         resendBtn.innerText = '{% trans "Resend Code" %}';
         resendBtn.style.opacity = '1';
         resendBtn.style.pointerEvents = 'auto';
       }
-    }, 1000);
+    }
+
+    update();
+    cooldownTimer = setInterval(update, 500);
   }
+
+  function restoreCooldownIfActive() {
+    const expiry = parseInt(sessionStorage.getItem('nearby_otp_expiry') || '0', 10);
+    if (expiry > Date.now()) {
+      startCooldown(expiry);
+    }
+  }
+
+  window.addEventListener('pageshow', restoreCooldownIfActive);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      restoreCooldownIfActive();
+    }
+  });
+
+  document.addEventListener('DOMContentLoaded', restoreCooldownIfActive);
 </script>
 {% endblock %}

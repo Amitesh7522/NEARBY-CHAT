@@ -57,10 +57,10 @@ class BrevoEmailOTPAuthTests(TestCase):
             expires_at=expires_at,
         )
 
-        # Submit Step 1 registration form
+        # Submit Sign Up form with Name + Email + OTP + Password
         form_data = {
-            'auth_type': 'email',
-            'identifier': self.test_email,
+            'name': 'Alex Dev',
+            'email': self.test_email,
             'otp': raw_otp,
             'password': self.test_password,
             'confirm_password': self.test_password,
@@ -73,7 +73,8 @@ class BrevoEmailOTPAuthTests(TestCase):
         self.assertIsNotNone(user)
         self.assertTrue(user.is_verified)
         self.assertTrue(user.username.startswith('user_'))
-        self.assertTrue(user.profile.is_temporary_name)
+        self.assertEqual(user.profile.display_name, 'Alex Dev')
+        self.assertFalse(user.profile.is_temporary_name)
 
     def test_invalid_otp_verification(self):
         """Verifying with an incorrect OTP decrements remaining attempts."""
