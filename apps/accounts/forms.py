@@ -11,41 +11,27 @@ User = get_user_model()
 class AccountRegisterForm(forms.Form):
     """
     Step 1 Registration Form:
-    Asks for Name, Email Address, 6-digit OTP, and Password.
-    Production-ready with strict validation and normalization.
+    Asks ONLY for authentication details (Email or Phone + OTP + Password).
+    No profile information is asked at this stage.
     """
-    name = forms.CharField(
-        label=_('Your Name'),
-        max_length=50,
-        required=True,
-        widget=forms.TextInput(attrs={
-            'class': 'input-field',
-            'placeholder': _('e.g. Alex Sharma'),
-            'autocomplete': 'name',
-            'id': 'id_name',
-        })
-    )
-    email = forms.EmailField(
-        label=_('Email Address'),
-        required=False,  # Checked in clean() to support legacy identifier
-        widget=forms.EmailInput(attrs={
-            'class': 'input-field',
-            'placeholder': 'you@example.com',
-            'autocomplete': 'email',
-            'autocapitalize': 'none',
-            'autocorrect': 'off',
-            'spellcheck': 'false',
-            'id': 'id_email',
-        })
-    )
-    identifier = forms.CharField(
-        required=False,
-        widget=forms.HiddenInput()
-    )
-    auth_type = forms.CharField(
-        required=False,
+    AUTH_TYPE_CHOICES = [
+        ('email', _('Email Address')),
+        ('phone', _('Phone Number')),
+    ]
+
+    auth_type = forms.ChoiceField(
+        choices=AUTH_TYPE_CHOICES,
         initial='email',
         widget=forms.HiddenInput()
+    )
+    identifier = forms.CharField(
+        label=_('Email or Phone Number'),
+        widget=forms.TextInput(attrs={
+            'class': 'input-field',
+            'placeholder': _('Enter email address or mobile number'),
+            'autocomplete': 'username',
+            'id': 'id_identifier',
+        })
     )
     otp = forms.CharField(
         label=_('Verification Code (OTP)'),
@@ -53,7 +39,7 @@ class AccountRegisterForm(forms.Form):
         min_length=6,
         widget=forms.TextInput(attrs={
             'class': 'input-field text-center font-mono',
-            'placeholder': '••••••',
+            'placeholder': '123456',
             'maxlength': '6',
             'pattern': '[0-9]{6}',
             'inputmode': 'numeric',
@@ -82,46 +68,51 @@ class AccountRegisterForm(forms.Form):
         })
     )
 
-    def clean_name(self):
-        name = self.cleaned_data.get('name', '').strip()
-        if not name:
-            raise forms.ValidationError(_('Please enter your name.'))
-        if len(name) < 2:
-            raise forms.ValidationError(_('Name must be at least 2 characters.'))
-        return name
+    def clean_identifier(self):
+        ident = self.cleaned_data.get('identifier', '').strip()
+        auth_type = self.cleaned_data.get('auth_type', 'email')
 
-    def clean_email(self):
-        email = self.cleaned_data.get('email', '').strip().lower()
-        if not email:
-            # Fallback to identifier if supplied
-            ident = self.data.get('identifier', '').strip().lower()
-            if ident and '@' in ident:
-                email = ident
+        if not ident:
+            raise forms.ValidationError(_('Please enter your email or phone number.'))
 
-        if not email:
-            raise forms.ValidationError(_('Please enter your email address.'))
+        if '@' in ident or auth_type == 'email':
+            # Email validation
+            ident_clean = ident.lower()
+            if not re.match(r'^[\w\.\+\-]+@[\w\.\-]+\.\w+$', ident_clean):
+                raise forms.ValidationError(_('Please enter a valid email address.'))
+            if User.objects.filter(email__iexact=ident_clean).exists():
+                raise forms.ValidationError(_('An account with this email already exists.'))
+            return ident_clean
+        else:
+            # Phone validation
+            clean_digits = re.sub(r'\D', '', ident)
+            if len(clean_digits) < 10:
+                raise forms.ValidationError(_('Please enter a valid 10-digit mobile number.'))
+            # Standardize Indian 10-digit format
+            if len(clean_digits) == 10:
+                phone_std = clean_digits
+            elif len(clean_digits) == 12 and clean_digits.startswith('91'):
+                phone_std = clean_digits[2:]
+            else:
+                phone_std = clean_digits
 
-        if not re.match(r'^[\w\.\+\-]+@[\w\.\-]+\.\w+$', email):
-            raise forms.ValidationError(_('Please enter a valid email address.'))
-
-        if User.objects.filter(email__iexact=email).exists():
-            raise forms.ValidationError(_('An account with this email already exists.'))
-
-        return email
+            if User.objects.filter(phone_number=phone_std).exists():
+                raise forms.ValidationError(_('An account with this phone number already exists.'))
+            return phone_std
 
     def clean(self):
         cleaned_data = super().clean()
         password = cleaned_data.get('password')
         confirm_password = cleaned_data.get('confirm_password')
-        email = cleaned_data.get('email') or self.data.get('identifier', '').strip().lower()
+        identifier = cleaned_data.get('identifier')
         otp = cleaned_data.get('otp')
 
         if password and confirm_password and password != confirm_password:
             self.add_error('confirm_password', _('Passwords do not match.'))
 
         # Real OTP backend verification
-        if email and otp:
-            is_valid, err_msg = VerificationService.verify_otp_challenge(email, otp, purpose='signup')
+        if identifier and otp:
+            is_valid, err_msg = VerificationService.verify_otp_challenge(identifier, otp, purpose='signup')
             if not is_valid:
                 self.add_error('otp', err_msg)
 
@@ -165,19 +156,15 @@ class OnboardingProfileForm(forms.ModelForm):
 
 class UserLoginForm(AuthenticationForm):
     """
-    User login form supporting Email or Username.
+    User login form supporting Username, Email, or Phone Number.
     """
     username = forms.CharField(
-        label=_('Email or Username'),
+        label=_('Email, Phone or Username'),
         widget=forms.TextInput(attrs={
             'class': 'input-field',
-            'placeholder': _('Enter your email or username'),
+            'placeholder': _('email, phone or username'),
             'autofocus': True,
-            'autocomplete': 'username',
-            'autocapitalize': 'none',
-            'autocorrect': 'off',
-            'spellcheck': 'false',
-            'id': 'id_username',
+            'autocomplete': 'username'
         })
     )
     password = forms.CharField(
@@ -185,8 +172,7 @@ class UserLoginForm(AuthenticationForm):
         widget=forms.PasswordInput(attrs={
             'class': 'input-field',
             'placeholder': '••••••••',
-            'autocomplete': 'current-password',
-            'id': 'id_password',
+            'autocomplete': 'current-password'
         })
     )
 

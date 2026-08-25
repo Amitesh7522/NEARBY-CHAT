@@ -50,18 +50,17 @@ class AccountsTestCase(TestCase):
         otp_rec.save()
 
         res = self.client.post(reverse('accounts:register'), {
-            'name': 'New Person',
-            'email': email,
+            'auth_type': 'email',
+            'identifier': email,
             'otp': raw_otp,
             'password': 'StrongPassword123!',
             'confirm_password': 'StrongPassword123!'
         })
         self.assertEqual(res.status_code, 302)
-        self.assertRedirects(res, reverse('core:home'))
+        self.assertRedirects(res, reverse('accounts:onboarding'))
         new_u = User.objects.filter(email=email).first()
         self.assertIsNotNone(new_u)
-        self.assertEqual(new_u.profile.display_name, 'New Person')
-        self.assertFalse(new_u.profile.is_temporary_name)
+        self.assertTrue(new_u.profile.is_temporary_name)
 
     @patch('apps.accounts.services.Fast2SMSProvider.send_otp', return_value=True)
     def test_otp_verification_service(self, mock_sms):
