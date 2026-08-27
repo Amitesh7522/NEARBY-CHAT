@@ -3,8 +3,8 @@ services:
   - type: web
     name: nearby-chat
     env: python
-    region: singapore # Closest low-latency region to India
-    plan: free
+    region: singapore # Low-latency region for India
+    plan: starter # $7/mo Starter plan with 24/7 uptime & WebSockets support
     buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate --noinput"
     startCommand: "daphne -b 0.0.0.0 -p $PORT nearby_chat.asgi:application"
     envVars:
@@ -24,11 +24,17 @@ services:
         fromDatabase:
           name: nearby-chat-db
           property: connectionString
+      - key: BREVO_API_KEY
+        sync: false # Set securely in Render dashboard
+      - key: BREVO_SENDER_EMAIL
+        value: "no-reply@nearbychat.in"
+      - key: BREVO_SENDER_NAME
+        value: "Nearby Chat"
 
 databases:
-  # Free Managed PostgreSQL Database
+  # Managed PostgreSQL Database
   - name: nearby-chat-db
     region: singapore
-    plan: free
+    plan: starter # $7/mo Starter managed Postgres
     databaseName: nearby_chat
     user: nearby_chat_user
