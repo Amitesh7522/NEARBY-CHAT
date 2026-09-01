@@ -244,6 +244,26 @@ class PrivateRoomViewsHTTPTests(TestCase):
         self.assertContains(response, "Private Room")
         self.assertContains(response, "Join with Code")
 
+    def test_landing_page_shows_active_rooms_and_header_separation(self):
+        self.client.force_login(self.user)
+        raw_token = secrets.token_urlsafe(32)
+        room, p1 = PrivateRoomService.create_room(
+            creator_user=self.user,
+            duration_choice='24h',
+            creator_temp_name='Cosmic Leopard',
+            raw_session_token=raw_token
+        )
+
+        response = self.client.get(reverse('private_rooms:landing'))
+        self.assertEqual(response.status_code, 200)
+        # Header must say Private Room directly
+        self.assertContains(response, "Private Room")
+        # Landing must show Your Active Private Rooms and Resume Chat button
+        self.assertContains(response, "Your Active Private Rooms")
+        self.assertContains(response, "Cosmic Leopard")
+        self.assertContains(response, "Resume Chat")
+        self.assertContains(response, room.join_code)
+
     def test_create_private_room_flow(self):
         self.client.force_login(self.user)
         response = self.client.post(reverse('private_rooms:create'), {

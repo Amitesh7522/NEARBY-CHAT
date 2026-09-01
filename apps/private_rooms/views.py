@@ -61,11 +61,67 @@ def get_participant_from_session(request, room):
     ).first()
 
 
+def get_user_active_private_rooms(request):
+    """
+    Returns list of active, unexpired, non-deleted, non-blocked private room participants
+    for the current user (if logged in) or the current session.
+    """
+    now = timezone.now()
+    active_participations = []
+    seen_room_ids = set()
+
+    # 1. Check logged-in user
+    if request.user.is_authenticated:
+        user_parts = PrivateRoomParticipant.objects.filter(
+            user=request.user,
+            is_active=True,
+            is_blocked=False,
+            room__is_deleted=False,
+            room__is_blocked=False,
+            room__expires_at__gt=now
+        ).select_related('room').order_by('-room__created_at')
+        for p in user_parts:
+            if p.room.id not in seen_room_ids:
+                seen_room_ids.add(p.room.id)
+                active_participations.append(p)
+
+    # 2. Check room-scoped session tokens (for guests or creator sessions)
+    for key, raw_token in list(request.session.items()):
+        if key.startswith('pr_auth_') or key.startswith('private_room_session_'):
+            room_id_str = key.replace('pr_auth_', '').replace('private_room_session_', '')
+            try:
+                room_uuid = uuid.UUID(room_id_str)
+            except (ValueError, AttributeError):
+                continue
+            if room_uuid in seen_room_ids:
+                continue
+
+            token_hash = hash_token(raw_token)
+            p = PrivateRoomParticipant.objects.filter(
+                room_id=room_uuid,
+                session_token_hash=token_hash,
+                is_active=True,
+                is_blocked=False,
+                room__is_deleted=False,
+                room__is_blocked=False,
+                room__expires_at__gt=now
+            ).select_related('room').first()
+            if p and p.room.id not in seen_room_ids:
+                seen_room_ids.add(p.room.id)
+                active_participations.append(p)
+
+    return active_participations
+
+
 def landing_view(request):
     """
-    Private Room entrance hub: Explains feature, Create CTA, and Join Code option.
+    Private Room entrance hub: Explains feature, displays active resumable rooms,
+    Create CTA, and Join Code option.
     """
-    return render(request, 'private_rooms/landing.html')
+    active_participations = get_user_active_private_rooms(request)
+    return render(request, 'private_rooms/landing.html', {
+        'active_participations': active_participations,
+    })
 
 
 @login_required
