@@ -24,8 +24,7 @@
   <link rel="stylesheet" href="{% static 'css/rooms.css' %}">
   
   {% block extra_head %}{% endblock %}
-</head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
   <div class="app-container">
     {% include 'includes/header.html' %}
     

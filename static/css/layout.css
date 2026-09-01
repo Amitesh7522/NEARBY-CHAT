@@ -78,6 +78,43 @@
   min-width: 0;
 }
 
+/* Chat Page Content Isolation */
+body.is-chat-page .app-container {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  max-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+body.is-chat-page .app-main {
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+@media (min-width: 768px) {
+  body.is-chat-page .app-main {
+    max-width: var(--max-content-width);
+    margin: 0 auto;
+    padding: var(--space-4);
+  }
+}
+
+@media (max-width: 767px) {
+  body.is-chat-page .bottom-nav {
+    display: none !important;
+  }
+}
+
 /* Auth Pages Wrapper */
 .auth-wrapper {
   width: 100%;

@@ -19,8 +19,13 @@ class ChatClient {
 
     this.initWebSocket();
     this.initEventListeners();
+    this.initViewportHandler();
     this.initExistingMessages();
     this.scrollToBottom();
+    // Multi-pass scroll ensures images/fonts that load asynchronously keep scroll at bottom
+    requestAnimationFrame(() => this.scrollToBottom());
+    setTimeout(() => this.scrollToBottom(), 60);
+    setTimeout(() => this.scrollToBottom(), 250);
   }
 
   initWebSocket() {
@@ -72,6 +77,11 @@ class ChatClient {
         this.typingTimeout = setTimeout(() => {
           this.socket.send({ action: 'typing', is_typing: false });
         }, 1500);
+      });
+
+      this.inputEl.addEventListener('focus', () => {
+        setTimeout(() => this.scrollToBottom(), 120);
+        setTimeout(() => this.scrollToBottom(), 300);
       });
     }
 
@@ -289,10 +299,37 @@ class ChatClient {
     }
   }
 
-  scrollToBottom() {
-    if (this.streamEl) {
-      this.streamEl.scrollTop = this.streamEl.scrollHeight;
+  initViewportHandler() {
+    if (window.visualViewport) {
+      const handleResize = () => {
+        if (window.innerWidth <= 767) {
+          const appHeader = document.querySelector('.app-header');
+          const headerH = appHeader ? appHeader.offsetHeight : 0;
+          const usableH = window.visualViewport.height - headerH;
+          const chatWindow = document.querySelector('.chat-window');
+          if (chatWindow && usableH > 150) {
+            chatWindow.style.height = `${usableH}px`;
+          }
+        }
+        this.scrollToBottom();
+      };
+      window.visualViewport.addEventListener('resize', handleResize);
+      window.visualViewport.addEventListener('scroll', handleResize);
     }
+  }
+
+  scrollToBottom(smooth = false) {
+    if (!this.streamEl) return;
+    const targetScroll = this.streamEl.scrollHeight;
+    if (smooth) {
+      this.streamEl.scrollTo({ top: targetScroll, behavior: 'smooth' });
+    } else {
+      this.streamEl.scrollTop = targetScroll;
+    }
+    // Double-pass ensures late font/image rendering still places scroll at bottom
+    requestAnimationFrame(() => {
+      if (this.streamEl) this.streamEl.scrollTop = this.streamEl.scrollHeight;
+    });
   }
 
   escapeHtml(str) {

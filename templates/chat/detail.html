@@ -3,6 +3,8 @@
 
 {% block title %}{{ other_profile.get_display_name|default:other_user.username }} — Nearby Chat{% endblock %}
 
+{% block body_class %}is-chat-page{% endblock %}
+
 {% block content %}
 <div class="chat-window">
   

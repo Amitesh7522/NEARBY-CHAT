@@ -13,8 +13,12 @@ class RoomChatClient {
     this.renderedMsgIds = new Set();
     this.initWebSocket();
     this.initEventListeners();
+    this.initViewportHandler();
     this.initExistingMessages();
     this.scrollToBottom();
+    requestAnimationFrame(() => this.scrollToBottom());
+    setTimeout(() => this.scrollToBottom(), 60);
+    setTimeout(() => this.scrollToBottom(), 250);
   }
 
   initWebSocket() {
@@ -44,12 +48,37 @@ class RoomChatClient {
     });
   }
 
-  initEventListeners() {
     if (this.formEl) {
       this.formEl.addEventListener('submit', (e) => {
         e.preventDefault();
         this.sendMessage();
       });
+    }
+
+    if (this.inputEl) {
+      this.inputEl.addEventListener('focus', () => {
+        setTimeout(() => this.scrollToBottom(), 120);
+        setTimeout(() => this.scrollToBottom(), 300);
+      });
+    }
+  }
+
+  initViewportHandler() {
+    if (window.visualViewport) {
+      const handleResize = () => {
+        if (window.innerWidth <= 767) {
+          const appHeader = document.querySelector('.app-header');
+          const headerH = appHeader ? appHeader.offsetHeight : 0;
+          const usableH = window.visualViewport.height - headerH;
+          const chatWindow = document.querySelector('.chat-window');
+          if (chatWindow && usableH > 150) {
+            chatWindow.style.height = `${usableH}px`;
+          }
+        }
+        this.scrollToBottom();
+      };
+      window.visualViewport.addEventListener('resize', handleResize);
+      window.visualViewport.addEventListener('scroll', handleResize);
     }
   }
 
@@ -93,10 +122,17 @@ class RoomChatClient {
     this.scrollToBottom();
   }
 
-  scrollToBottom() {
-    if (this.streamEl) {
-      this.streamEl.scrollTop = this.streamEl.scrollHeight;
+  scrollToBottom(smooth = false) {
+    if (!this.streamEl) return;
+    const targetScroll = this.streamEl.scrollHeight;
+    if (smooth) {
+      this.streamEl.scrollTo({ top: targetScroll, behavior: 'smooth' });
+    } else {
+      this.streamEl.scrollTop = targetScroll;
     }
+    requestAnimationFrame(() => {
+      if (this.streamEl) this.streamEl.scrollTop = this.streamEl.scrollHeight;
+    });
   }
 
   escapeHtml(str) {
