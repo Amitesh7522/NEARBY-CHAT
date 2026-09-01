@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'apps.safety',
     'apps.notifications',
     'apps.core',
+    'apps.private_rooms',
 ]
 
 MIDDLEWARE = [

@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% load i18n static %}
+
+{% block title %}{% trans "Private Room Expired" %} — Nearby Chat{% endblock %}
+
+{% block content %}
+<div style="max-width: 480px; margin: 0 auto; display: flex; flex-direction: column; gap: var(--space-4);">
+
+  <div class="card" style="text-align: center; padding: var(--space-8) var(--space-5);">
+    <div style="width: 64px; height: 64px; border-radius: var(--radius-full); background: var(--bg-subtle); color: var(--text-muted); display: flex; align-items: center; justify-content: center; font-size: 30px; margin: 0 auto var(--space-3);">
+      ⌛
+    </div>
+
+    <h1 style="font-size: var(--text-xl); font-weight: 800; margin-bottom: var(--space-2);">
+      {% trans "This Private Room Has Expired" %}
+    </h1>
+    
+    <p style="font-size: var(--text-xs); color: var(--text-muted); margin-bottom: var(--space-5); line-height: 1.45;">
+      {% trans "Private rooms are temporary. The expiry timer for this room has ended, and all messages and files are no longer accessible." %}
+    </p>
+
+    <div style="display: flex; flex-direction: column; gap: var(--space-2); max-width: 280px; margin: 0 auto;">
+      <a href="{% url 'private_rooms:landing' %}" class="btn btn-primary" style="justify-content: center; font-weight: 700; padding: 11px;">
+        {% trans "Create New Private Room" %}
+      </a>
+      <a href="{% url 'core:home' %}" class="btn btn-secondary" style="justify-content: center; font-weight: 600; padding: 11px;">
+        {% trans "Back to Home" %}
+      </a>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

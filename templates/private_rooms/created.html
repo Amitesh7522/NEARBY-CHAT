@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+{% load i18n static %}
+
+{% block title %}{% trans "Private Room Created" %} — Nearby Chat{% endblock %}
+
+{% block content %}
+<div style="max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; gap: var(--space-4);">
+
+  <!-- Success Card -->
+  <div class="card" style="text-align: center; padding: var(--space-6) var(--space-5);">
+    
+    <div style="width: 60px; height: 60px; border-radius: var(--radius-full); background: rgba(16, 185, 129, 0.15); color: var(--success); display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto var(--space-3);">
+      ✓
+    </div>
+
+    <h1 style="font-size: var(--text-xl); font-weight: 800; margin-bottom: var(--space-1);">
+      {% trans "Private Room Ready" %}
+    </h1>
+    
+    <p style="font-size: var(--text-xs); color: var(--text-muted); margin: 0 0 var(--space-4) 0;">
+      {% trans "Share this secure link or join code with your guest to start chatting." %}
+    </p>
+
+    <!-- Expiry info badge -->
+    <div style="display: inline-flex; align-items: center; gap: 6px; background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 999px; padding: 4px 12px; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: var(--space-4);">
+      <span>⏳</span>
+      <span>{% trans "Expires in" %}: <strong>{{ room.time_remaining_display }}</strong></span>
+    </div>
+
+    <!-- 1. Secure Invite Link Box -->
+    <div style="text-align: left; margin-bottom: var(--space-4);">
+      <label style="font-size: var(--text-xs); font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 6px;">
+        🔗 {% trans "Secure Invite Link" %}
+      </label>
+      
+      <div style="background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: var(--space-3); display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); flex-wrap: wrap;">
+        <span id="invite-url-text" style="font-family: monospace; font-size: 11px; color: var(--text-primary); word-break: break-all; flex: 1; min-width: 180px;">
+          {{ invite_url }}
+        </span>
+        <div style="display: flex; gap: var(--space-2); flex-shrink: 0;">
+          <button type="button" onclick="copyInviteLink()" id="btn-copy-link" class="btn btn-sm btn-primary" style="padding: 6px 12px; font-size: var(--text-xs);">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            <span id="copy-link-label">{% trans "Copy" %}</span>
+          </button>
+          <button type="button" onclick="shareInviteLink()" class="btn btn-sm btn-secondary" style="padding: 6px 12px; font-size: var(--text-xs);" title="{% trans 'Share link' %}">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+            {% trans "Share" %}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Short Join Code Box -->
+    <div style="text-align: left; margin-bottom: var(--space-5);">
+      <label style="font-size: var(--text-xs); font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 6px;">
+        🔑 {% trans "Or Share Join Code" %}
+      </label>
+
+      <div style="background: rgba(99, 102, 241, 0.08); border: 1.5px dashed var(--primary); border-radius: var(--radius-lg); padding: var(--space-3) var(--space-4); display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);">
+        <div style="font-family: monospace; font-size: var(--text-xl); font-weight: 800; letter-spacing: 3px; color: var(--primary);">
+          {{ room.join_code }}
+        </div>
+        <button type="button" onclick="copyJoinCode()" id="btn-copy-code" class="btn btn-sm btn-secondary" style="padding: 6px 12px; font-size: var(--text-xs);">
+          <span id="copy-code-label">{% trans "Copy Code" %}</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Enter Room CTA -->
+    <a href="{% url 'private_rooms:chat' room_id=room.id %}" class="btn btn-primary btn-lg" style="width: 100%; justify-content: center; font-weight: 700; padding: 13px; gap: 8px;">
+      {% trans "Enter Private Room" %} &rarr;
+    </a>
+
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const inviteUrl = "{{ invite_url }}";
+  const joinCode = "{{ room.join_code }}";
+
+  function copyInviteLink() {
+    navigator.clipboard.writeText(inviteUrl).then(() => {
+      const label = document.getElementById('copy-link-label');
+      if (label) label.textContent = "{% trans 'Copied!' %}";
+      if (typeof window.showToast === 'function') {
+        window.showToast("{% trans 'Invite link copied to clipboard!' %}", "success");
+      }
+      setTimeout(() => {
+        if (label) label.textContent = "{% trans 'Copy' %}";
+      }, 2500);
+    }).catch(() => {
+      prompt("{% trans 'Copy invite link:' %}", inviteUrl);
+    });
+  }
+
+  function copyJoinCode() {
+    navigator.clipboard.writeText(joinCode).then(() => {
+      const label = document.getElementById('copy-code-label');
+      if (label) label.textContent = "{% trans 'Copied!' %}";
+      if (typeof window.showToast === 'function') {
+        window.showToast("{% trans 'Join code copied!' %}", "success");
+      }
+      setTimeout(() => {
+        if (label) label.textContent = "{% trans 'Copy Code' %}";
+      }, 2500);
+    }).catch(() => {
+      prompt("{% trans 'Copy code:' %}", joinCode);
+    });
+  }
+
+  function shareInviteLink() {
+    if (navigator.share) {
+      navigator.share({
+        title: 'Private Room — Nearby Chat',
+        text: "{% trans 'Join my private 1-to-1 room on Nearby Chat:' %}",
+        url: inviteUrl
+      }).catch(err => {
+        if (err.name !== 'AbortError') copyInviteLink();
+      });
+    } else {
+      copyInviteLink();
+    }
+  }
+</script>
+{% endblock %}

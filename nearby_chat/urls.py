@@ -29,6 +29,9 @@ urlpatterns = [
     # Community Rooms
     path('rooms/', include('apps.rooms.urls')),
     
+    # Private Rooms (Anonymous 1-to-1)
+    path('private/', include('apps.private_rooms.urls', namespace='private_rooms')),
+    
     # Safety, Blocking & Reporting
     path('safety/', include('apps.safety.urls')),
     

@@ -21,8 +21,8 @@ ENV/
 
 # Static & Uploaded Media
 staticfiles/
-media/avatars/
-media/room_avatars/
+media/
+
 
 # Logs & System
 *.log

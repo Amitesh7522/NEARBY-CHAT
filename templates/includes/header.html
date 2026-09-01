@@ -40,6 +40,8 @@
       <h1 class="header-page-title">{% trans "Privacy Policy" %}</h1>
     {% elif request.resolver_match.view_name == 'core:terms_of_use' %}
       <h1 class="header-page-title">{% trans "Terms of Use" %}</h1>
+    {% elif 'private_rooms' in request.resolver_match.app_name %}
+      <h1 class="header-page-title">{% trans "Private Room" %}</h1>
     {% elif 'matching' in request.resolver_match.app_name %}
       <h1 class="header-page-title">{% trans "People Nearby" %}</h1>
     {% else %}

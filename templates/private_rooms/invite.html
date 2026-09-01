@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% load i18n static %}
+
+{% block title %}{% trans "Join Private Room" %} — Nearby Chat{% endblock %}
+
+{% block content %}
+<div style="max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; gap: var(--space-4);">
+
+  <div class="card" style="text-align: center; padding: var(--space-6) var(--space-5);">
+    
+    <div style="width: 64px; height: 64px; border-radius: var(--radius-xl); background: rgba(99, 102, 241, 0.15); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 30px; margin: 0 auto var(--space-3); box-shadow: 0 8px 24px rgba(99, 102, 241, 0.2);">
+      🔒
+    </div>
+
+    <h1 style="font-size: var(--text-xl); font-weight: 800; margin-bottom: var(--space-1);">
+      {% trans "You've Been Invited to a Private Room" %}
+    </h1>
+    
+    <p style="font-size: var(--text-xs); color: var(--text-muted); margin: 0 auto var(--space-4); max-width: 380px; line-height: 1.45;">
+      {% trans "Join a private 1-to-1 chat without creating an account or revealing your profile." %}
+    </p>
+
+    <div style="display: inline-flex; align-items: center; gap: 6px; background: var(--bg-subtle); border: 1px solid var(--border-color); border-radius: 999px; padding: 4px 12px; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: var(--space-4);">
+      <span>⏳</span>
+      <span>{% trans "Expires in" %}: <strong>{{ room.time_remaining_display }}</strong></span>
+    </div>
+
+    <form method="post" action="{% url 'private_rooms:join_invite' secure_token=room.secure_token %}" style="text-align: left; display: flex; flex-direction: column; gap: var(--space-3);">
+      {% csrf_token %}
+
+      <div>
+        <label for="temp-name-input" style="font-size: var(--text-xs); font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 6px;">
+          🎭 {% trans "Choose Your Anonymous Name" %}
+        </label>
+        
+        <div style="display: flex; gap: var(--space-2);">
+          <input type="text" 
+                 id="temp-name-input" 
+                 name="temp_name" 
+                 value="{{ suggested_name }}" 
+                 class="form-control" 
+                 maxlength="40" 
+                 required 
+                 style="flex: 1; font-weight: 600;">
+          
+          <button type="button" 
+                  onclick="shuffleTempName()" 
+                  class="btn btn-secondary" 
+                  style="font-size: var(--text-xs); padding: 8px 12px; white-space: nowrap; gap: 4px;"
+                  title="{% trans 'Generate random name' %}">
+            🎲 {% trans "Shuffle" %}
+          </button>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-lg" style="width: 100%; justify-content: center; font-weight: 700; padding: 13px; margin-top: var(--space-2); gap: 8px;">
+        {% trans "Join Private Room" %} &rarr;
+      </button>
+
+    </form>
+
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const sampleNames = [
+    "Silver Falcon", "Purple Owl", "Blue Panda", "Velvet Fox", "Amber Lynx",
+    "Quiet Otter", "Cosmic Badger", "Golden Hawk", "Solar Dolphin", "Sage Koala",
+    "Mystic Tiger", "Ocean Wolf", "Frost Bear", "Astral Eagle", "Breeze Stag"
+  ];
+
+  function shuffleTempName() {
+    const input = document.getElementById('temp-name-input');
+    const randomName = sampleNames[Math.floor(Math.random() * sampleNames.length)];
+    input.value = randomName;
+  }
+</script>
+{% endblock %}

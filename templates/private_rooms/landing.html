@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% load i18n static %}
+
+{% block title %}{% trans "Private Room" %} — Nearby Chat{% endblock %}
+
+{% block content %}
+<div style="max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: var(--space-5);">
+
+  <!-- Hero Header Card -->
+  <div class="card" style="text-align: center; padding: var(--space-6) var(--space-5); position: relative; overflow: hidden;">
+    <div style="width: 64px; height: 64px; border-radius: var(--radius-xl); background: rgba(99, 102, 241, 0.15); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 30px; margin: 0 auto var(--space-3); box-shadow: 0 8px 24px rgba(99, 102, 241, 0.2);">
+      🔒
+    </div>
+    
+    <h1 style="font-size: var(--text-2xl); margin-bottom: var(--space-2); letter-spacing: -0.3px;">
+      {% trans "Private Room" %}
+    </h1>
+    
+    <p style="font-size: var(--text-sm); color: var(--text-muted); max-width: 440px; margin: 0 auto var(--space-5); line-height: 1.45;">
+      {% trans "Chat and share privately without revealing your NearbyChat profile." %}
+    </p>
+
+    <!-- CTAs -->
+    <div style="display: flex; flex-direction: column; gap: var(--space-3); max-width: 320px; margin: 0 auto;">
+      {% if user.is_authenticated %}
+        <a href="{% url 'private_rooms:create' %}" class="btn btn-primary" style="font-weight: 700; padding: 12px 20px; justify-content: center; gap: 8px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          {% trans "Create Private Room" %}
+        </a>
+      {% else %}
+        <a href="{% url 'accounts:login' %}?next={% url 'private_rooms:create' %}" class="btn btn-primary" style="font-weight: 700; padding: 12px 20px; justify-content: center; gap: 8px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          {% trans "Log In to Create Room" %}
+        </a>
+      {% endif %}
+
+      <a href="{% url 'private_rooms:join_code' %}" class="btn btn-secondary" style="font-weight: 600; padding: 12px 20px; justify-content: center; gap: 8px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+        {% trans "Join with Code" %}
+      </a>
+    </div>
+  </div>
+
+  <!-- Key Privacy Principles Grid -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--space-3);">
+    
+    <div class="card" style="padding: var(--space-4); display: flex; align-items: flex-start; gap: var(--space-3);">
+      <div style="font-size: 24px; flex-shrink: 0; line-height: 1;">🎭</div>
+      <div>
+        <h3 style="font-size: var(--text-sm); font-weight: 700; margin-bottom: 2px;">{% trans "Complete Anonymity" %}</h3>
+        <p style="font-size: var(--text-xs); color: var(--text-muted); margin: 0; line-height: 1.4;">
+          {% trans "Both you and your guest use temporary identities. Your name, photo, and profile are never revealed." %}
+        </p>
+      </div>
+    </div>
+
+    <div class="card" style="padding: var(--space-4); display: flex; align-items: flex-start; gap: var(--space-3);">
+      <div style="font-size: 24px; flex-shrink: 0; line-height: 1;">👥</div>
+      <div>
+        <h3 style="font-size: var(--text-sm); font-weight: 700; margin-bottom: 2px;">{% trans "Strictly 1-to-1" %}</h3>
+        <p style="font-size: var(--text-xs); color: var(--text-muted); margin: 0; line-height: 1.4;">
+          {% trans "Limited to 1 creator + 1 guest. Once full, the room automatically locks so no third party can enter." %}
+        </p>
+      </div>
+    </div>
+
+    <div class="card" style="padding: var(--space-4); display: flex; align-items: flex-start; gap: var(--space-3);">
+      <div style="font-size: 24px; flex-shrink: 0; line-height: 1;">⏳</div>
+      <div>
+        <h3 style="font-size: var(--text-sm); font-weight: 700; margin-bottom: 2px;">{% trans "Auto-Expiring & Disposable" %}</h3>
+        <p style="font-size: var(--text-xs); color: var(--text-muted); margin: 0; line-height: 1.4;">
+          {% trans "Rooms automatically expire in 1 hour, 24 hours, or 7 days, after which messages become inaccessible." %}
+        </p>
+      </div>
+    </div>
+
+    <div class="card" style="padding: var(--space-4); display: flex; align-items: flex-start; gap: var(--space-3);">
+      <div style="font-size: 24px; flex-shrink: 0; line-height: 1;">🚀</div>
+      <div>
+        <h3 style="font-size: var(--text-sm); font-weight: 700; margin-bottom: 2px;">{% trans "No Guest Signup Needed" %}</h3>
+        <p style="font-size: var(--text-xs); color: var(--text-muted); margin: 0; line-height: 1.4;">
+          {% trans "The invited person can join directly in their browser using the link or join code without creating an account." %}
+        </p>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}

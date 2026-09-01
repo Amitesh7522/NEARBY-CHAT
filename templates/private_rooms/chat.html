@@ -1,0 +1,274 @@
+{% extends 'base.html' %}
+{% load i18n static %}
+
+{% block title %}{% trans "Private Room" %} ({{ room.time_remaining_display }}) — Nearby Chat{% endblock %}
+
+{% block body_class %}is-chat-page{% endblock %}
+
+{% block content %}
+<div class="chat-window">
+  
+  <!-- Private Room Header -->
+  <div class="chat-header" style="padding: 10px var(--space-4); background: var(--bg-surface); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+    <div style="display: flex; align-items: center; gap: var(--space-3); min-width: 0;">
+      <a href="{% url 'private_rooms:landing' %}" class="btn-icon" aria-label="{% trans 'Exit to Landing' %}" title="{% trans 'Exit' %}">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+      </a>
+
+      <div style="min-width: 0;">
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span style="font-size: 14px;">🔒</span>
+          <h3 style="font-size: var(--text-sm); font-weight: 800; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+            {% trans "Private Room" %}
+          </h3>
+          <span style="font-size: 10px; font-family: monospace; background: rgba(99, 102, 241, 0.12); color: var(--primary); font-weight: 700; padding: 2px 6px; border-radius: 4px;">
+            {{ room.join_code }}
+          </span>
+        </div>
+        
+        <!-- Live Countdown Timer -->
+        <div style="font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; margin-top: 2px;">
+          <span>⏳</span>
+          <span>{% trans "Expires in" %}:</span>
+          <span id="room-countdown-timer" style="font-weight: 700; color: var(--text-secondary);">{{ time_remaining_display }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Header Actions (Report, Leave, Delete) -->
+    <div style="display: flex; align-items: center; gap: var(--space-1);">
+      <button type="button" onclick="openReportModal()" class="btn-icon" title="{% trans 'Report Room' %}" aria-label="{% trans 'Report' %}">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+      </button>
+
+      <button type="button" onclick="openLeaveModal()" class="btn-icon" title="{% trans 'Leave Room' %}" aria-label="{% trans 'Leave Room' %}" style="color: var(--text-muted);">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+      </button>
+
+      {% if current_participant.is_creator %}
+        <button type="button" onclick="openDeleteModal()" class="btn-icon" title="{% trans 'Delete Room' %}" aria-label="{% trans 'Delete Room' %}" style="color: var(--error);">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+        </button>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Messages Stream -->
+  <div id="message-stream" class="message-stream" style="flex: 1; overflow-y: auto; padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3);">
+    
+    <div style="text-align: center; margin: var(--space-2) 0;">
+      <span style="font-size: 11px; background: var(--bg-subtle); color: var(--text-muted); padding: 4px 12px; border-radius: 999px; border: 1px solid var(--border-color);">
+        🔒 {% trans "Private & anonymous 1-to-1 session. Identities are not linked." %}
+      </span>
+    </div>
+
+    {% for msg in initial_messages %}
+      {% if msg.message_type == 'system' %}
+        <div class="system-message-row" style="text-align: center; margin: var(--space-1) 0;">
+          <span style="font-size: 11px; color: var(--text-muted); background: var(--bg-subtle); padding: 3px 10px; border-radius: 999px;">
+            {{ msg.content }}
+          </span>
+        </div>
+      {% else %}
+        <div class="message-bubble-row {% if msg.sender_id == current_participant.id %}outgoing{% else %}incoming{% endif %}" data-message-id="{{ msg.id }}">
+          
+          {% if msg.sender_id != current_participant.id %}
+            <div style="width: 28px; height: 28px; border-radius: var(--radius-full); background: {{ msg.sender.temp_avatar_color|default:'#06b6d4' }}; color: white; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; margin-right: 6px;">
+              {{ msg.sender.get_initials|default:'PR' }}
+            </div>
+          {% endif %}
+
+          <div class="message-bubble">
+            {% if msg.sender_id != current_participant.id %}
+              <div style="font-size: 10px; font-weight: 700; color: {{ msg.sender.temp_avatar_color|default:'#06b6d4' }}; margin-bottom: 2px;">
+                {{ msg.sender.temp_name }}
+              </div>
+            {% endif %}
+
+            {% if msg.message_type == 'image' %}
+              {% if msg.file %}
+                <img src="{% url 'private_rooms:serve_media' message_id=msg.id %}" alt="Image" style="max-width: 100%; max-height: 240px; border-radius: var(--radius-md); display: block; margin-bottom: 4px;" loading="lazy">
+              {% endif %}
+            {% elif msg.message_type == 'audio' %}
+              {% if msg.file %}
+                <audio controls src="{% url 'private_rooms:serve_media' message_id=msg.id %}" style="width: 220px; max-width: 100%; height: 36px; margin: 4px 0;"></audio>
+              {% endif %}
+            {% elif msg.message_type == 'file' %}
+              {% if msg.file %}
+                <a href="{% url 'private_rooms:serve_media' message_id=msg.id %}" class="btn btn-sm btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; text-decoration: none; padding: 6px 12px; margin: 4px 0; font-size: 11px;">
+                  📄 <span>{{ msg.file_name }}</span> ({{ msg.file_size|filesizeformat }})
+                </a>
+              {% endif %}
+            {% else %}
+              <div class="message-text">{{ msg.content }}</div>
+            {% endif %}
+
+            <div class="message-meta" style="font-size: 10px; opacity: 0.7; margin-top: 2px; text-align: right;">
+              <span>{{ msg.created_at|date:"H:i" }}</span>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+    {% empty %}
+      <div id="empty-state" class="empty-state" style="padding: var(--space-8) 0; text-align: center;">
+        <p style="color: var(--text-muted); font-size: var(--text-sm);">
+          {% trans "No messages yet. Send a friendly hello to start your private chat!" %}
+        </p>
+      </div>
+    {% endfor %}
+  </div>
+
+  <!-- Typing Indicator -->
+  <div id="typing-indicator" class="typing-indicator" style="display: none; padding: 4px var(--space-4); font-size: 11px; color: var(--text-muted);">
+    <span id="typing-name"></span> {% trans "is typing" %}...
+  </div>
+
+  <!-- Chat Composer -->
+  <form id="chat-form" class="chat-composer" style="background: var(--bg-surface); padding: var(--space-3); border-top: 1px solid var(--border-color); display: flex; align-items: center; gap: var(--space-2);">
+    {% csrf_token %}
+    
+    <!-- Hidden File Inputs -->
+    <input type="file" id="image-upload-input" accept="image/jpeg,image/png,image/webp,image/gif" style="display: none;">
+    <input type="file" id="file-upload-input" accept=".pdf,.txt,.docx,.xlsx,.pptx,.zip,.csv" style="display: none;">
+
+    <!-- Image Button -->
+    <button type="button" onclick="document.getElementById('image-upload-input').click()" class="btn-icon" title="{% trans 'Share Photo' %}" aria-label="{% trans 'Photo' %}">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+    </button>
+
+    <!-- File Attachment Button -->
+    <button type="button" onclick="document.getElementById('file-upload-input').click()" class="btn-icon" title="{% trans 'Send Document / File' %}" aria-label="{% trans 'Document' %}">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+    </button>
+
+    <!-- Voice Note Button -->
+    <button type="button" id="voice-record-btn" onclick="toggleVoiceRecording()" class="btn-icon" title="{% trans 'Record Voice Message' %}" aria-label="{% trans 'Voice' %}">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+    </button>
+
+    <!-- Text Message Input -->
+    <input type="text" id="chat-input" class="chat-input" placeholder="{% trans 'Type a private message...' %}" autocomplete="off" required style="flex: 1; border-radius: var(--radius-lg);">
+
+    <!-- Send Button -->
+    <button type="submit" class="btn-send" aria-label="{% trans 'Send' %}">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+    </button>
+  </form>
+
+</div>
+
+<!-- Leave Modal -->
+<div id="leave-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: var(--space-4);">
+  <div class="card" style="max-width: 380px; width: 100%; padding: var(--space-5); text-align: center;">
+    <h3 style="margin-bottom: var(--space-2);">{% trans "Leave Private Room?" %}</h3>
+    <p style="font-size: var(--text-xs); color: var(--text-muted); margin-bottom: var(--space-4);">
+      {% trans "You can only re-enter if the room is still active and not full." %}
+    </p>
+    <div style="display: flex; gap: var(--space-2); justify-content: center;">
+      <button type="button" onclick="closeLeaveModal()" class="btn btn-secondary btn-sm">{% trans "Cancel" %}</button>
+      <form method="post" action="{% url 'private_rooms:leave_room' room_id=room.id %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-primary btn-sm">{% trans "Leave Room" %}</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Modal (Creator Only) -->
+{% if current_participant.is_creator %}
+  <div id="delete-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: var(--space-4);">
+    <div class="card" style="max-width: 380px; width: 100%; padding: var(--space-5); text-align: center;">
+      <h3 style="color: var(--error); margin-bottom: var(--space-2);">{% trans "Delete Private Room?" %}</h3>
+      <p style="font-size: var(--text-xs); color: var(--text-muted); margin-bottom: var(--space-4);">
+        {% trans "This will immediately close the room and delete all shared messages and files for both participants." %}
+      </p>
+      <div style="display: flex; gap: var(--space-2); justify-content: center;">
+        <button type="button" onclick="closeDeleteModal()" class="btn btn-secondary btn-sm">{% trans "Cancel" %}</button>
+        <form method="post" action="{% url 'private_rooms:delete_room' room_id=room.id %}">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm" style="background: var(--error); color: white; border: none; font-weight: 700;">
+            {% trans "Delete Room" %}
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+{% endif %}
+
+<!-- Report Modal -->
+<div id="report-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: var(--space-4);">
+  <div class="card" style="max-width: 400px; width: 100%; padding: var(--space-5);">
+    <h3 style="margin-bottom: var(--space-2);">{% trans "Report Private Room" %}</h3>
+    <p style="font-size: var(--text-xs); color: var(--text-muted); margin-bottom: var(--space-3);">
+      {% trans "Reports are reviewed confidentially by our trust & safety team." %}
+    </p>
+    
+    <form method="post" action="{% url 'private_rooms:report_room' room_id=room.id %}">
+      {% csrf_token %}
+      <div style="margin-bottom: var(--space-3);">
+        <label style="font-size: var(--text-xs); font-weight: 700; display: block; margin-bottom: 4px;">{% trans "Reason" %}</label>
+        <select name="reason" class="form-control" style="font-size: var(--text-xs);">
+          <option value="harassment">{% trans "Harassment or Bullying" %}</option>
+          <option value="spam">{% trans "Spam or Scam" %}</option>
+          <option value="inappropriate_content">{% trans "Inappropriate Content / Media" %}</option>
+          <option value="other">{% trans "Other Safety Concern" %}</option>
+        </select>
+      </div>
+      
+      <div style="margin-bottom: var(--space-4);">
+        <label style="font-size: var(--text-xs); font-weight: 700; display: block; margin-bottom: 4px;">{% trans "Details (Optional)" %}</label>
+        <textarea name="details" rows="3" class="form-control" placeholder="{% trans 'Describe the safety issue...' %}" style="font-size: var(--text-xs);"></textarea>
+      </div>
+
+      <div style="display: flex; gap: var(--space-2); justify-content: flex-end;">
+        <button type="button" onclick="closeReportModal()" class="btn btn-secondary btn-sm">{% trans "Cancel" %}</button>
+        <button type="submit" class="btn btn-primary btn-sm">{% trans "Submit Report" %}</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/private_room.js' %}?v=1.0"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    window.privateRoomClient = new PrivateRoomClient({
+      roomId: "{{ room.id }}",
+      currentParticipantId: "{{ current_participant.id }}",
+      currentTempName: "{{ current_participant.temp_name }}",
+      currentAvatarColor: "{{ current_participant.temp_avatar_color }}",
+      uploadUrl: "{% url 'private_rooms:upload_media' room_id=room.id %}",
+      initialTimeRemaining: parseInt("{{ time_remaining_seconds }}", 10) || 0,
+      csrfToken: "{{ csrf_token }}"
+    });
+  });
+
+  function openLeaveModal() {
+    const m = document.getElementById('leave-modal');
+    if (m) m.style.display = 'flex';
+  }
+  function closeLeaveModal() {
+    const m = document.getElementById('leave-modal');
+    if (m) m.style.display = 'none';
+  }
+
+  function openDeleteModal() {
+    const m = document.getElementById('delete-modal');
+    if (m) m.style.display = 'flex';
+  }
+  function closeDeleteModal() {
+    const m = document.getElementById('delete-modal');
+    if (m) m.style.display = 'none';
+  }
+
+  function openReportModal() {
+    const m = document.getElementById('report-modal');
+    if (m) m.style.display = 'flex';
+  }
+  function closeReportModal() {
+    const m = document.getElementById('report-modal');
+    if (m) m.style.display = 'none';
+  }
+</script>
+{% endblock %}

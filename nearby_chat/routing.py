@@ -4,6 +4,7 @@ WebSocket routing for Nearby Chat.
 from django.urls import re_path, path
 from apps.chat import consumers as chat_consumers
 from apps.rooms import consumers as room_consumers
+from apps.private_rooms import consumers as private_room_consumers
 from apps.matching import consumers as matching_consumers
 from apps.notifications import consumers as notification_consumers
 
@@ -13,6 +14,9 @@ websocket_urlpatterns = [
     
     # Community Room WebSocket
     re_path(r'^ws/rooms/(?P<room_id>[0-9a-f-]+)/$', room_consumers.RoomConsumer.as_asgi()),
+    
+    # Private 1-to-1 Room WebSocket
+    re_path(r'^ws/private-room/(?P<room_id>[0-9a-f-]+)/$', private_room_consumers.PrivateRoomConsumer.as_asgi()),
     
     # Random Chat Matchmaking WebSocket
     re_path(r'^ws/matching/$', matching_consumers.MatchingConsumer.as_asgi()),
