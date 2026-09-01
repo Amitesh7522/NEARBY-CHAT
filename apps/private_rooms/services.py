@@ -351,3 +351,30 @@ class PrivateRoomService:
             )
         return True
 
+    @classmethod
+    def cleanup_expired_rooms(cls, purge_files_only=False):
+        """
+        Cleans up expired rooms and purges their physical files from disk.
+        If purge_files_only is True, removes files but retains metadata.
+        """
+        now = timezone.now()
+        expired_rooms = PrivateRoom.objects.filter(expires_at__lte=now)
+        cleaned_files_count = 0
+
+        for room in expired_rooms:
+            # Delete physical files
+            for msg in room.messages.exclude(file=''):
+                if msg.file:
+                    try:
+                        msg.file.delete(save=False)
+                        cleaned_files_count += 1
+                    except Exception:
+                        pass
+
+            if not purge_files_only:
+                room.is_deleted = True
+                room.save(update_fields=['is_deleted'])
+
+        return expired_rooms.count(), cleaned_files_count
+
+

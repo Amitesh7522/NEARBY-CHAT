@@ -80,6 +80,10 @@ class PrivateRoomConsumer(AsyncJsonWebsocketConsumer):
             if not text:
                 return
 
+            if len(text) > 5000:
+                await self.send_json({'type': 'error', 'message': 'Message exceeds maximum allowed length (5000 characters).'})
+                return
+
             room_valid = await self._is_room_valid()
             if not room_valid:
                 await self.send_json({'type': 'error', 'message': 'Room has expired or been deleted.'})

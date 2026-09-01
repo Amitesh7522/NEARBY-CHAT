@@ -131,6 +131,12 @@ def create_view(request):
     Logged-in user creates a new Private Room with custom or auto-generated temp name and expiry.
     """
     if request.method == 'POST':
+        if is_rate_limited(request, action='create_room', limit=15, window=300):
+            messages.error(request, _('Too many room creation requests. Please wait a few minutes before creating another room.'))
+            return render(request, 'private_rooms/create.html', {
+                'suggested_name': PrivateRoomService.generate_random_temp_name(),
+            })
+
         duration = request.POST.get('duration', '24h')
         temp_name = request.POST.get('temp_name', '').strip()
         
@@ -360,6 +366,9 @@ def upload_media_view(request, room_id):
     """
     Secure media and file upload endpoint for Private Rooms.
     """
+    if is_rate_limited(request, action=f'upload_{room_id}', limit=30, window=60):
+        return JsonResponse({'success': False, 'error': 'Upload rate limit exceeded. Please wait a moment.'}, status=429)
+
     room = get_object_or_404(PrivateRoom, id=room_id)
     if room.is_expired or room.is_deleted or room.is_blocked:
         return JsonResponse({'success': False, 'error': 'Room is no longer active.'}, status=403)
