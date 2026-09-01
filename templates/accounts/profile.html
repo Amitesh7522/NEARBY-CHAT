@@ -22,23 +22,11 @@
       {% endif %}
     </div>
 
-    <!-- Public Rating Summary & Reputation Badges -->
+    <!-- Community Participation Badge -->
     <div style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: var(--space-4); flex-wrap: wrap;">
-      <!-- Community Participation Badge -->
       <button type="button" onclick="openBadgeModal('{{ profile.badge }}')" class="badge" style="cursor: pointer; background: rgba(99, 102, 241, 0.15); color: var(--primary); border: 1px solid rgba(99, 102, 241, 0.3); font-weight: 700; font-size: var(--text-xs); transition: transform 0.15s ease;" title="{% trans 'Click to see badge info' %}">
         {{ badge_details.emoji }} {{ badge_details.name }}
       </button>
-
-      {% if rating_summary.show_public %}
-        <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #D97706; border: 1px solid rgba(245, 158, 11, 0.3); font-weight: 700; font-size: var(--text-xs);">
-          ★ {{ rating_summary.average_score }} ({{ rating_summary.rating_count }} {% trans "ratings" %})
-        </span>
-        {% for tag in rating_summary.top_tags %}
-          <span class="badge" style="font-size: 11px; background: var(--bg-subtle); color: var(--text-muted); border: 1px solid var(--border-color);">
-            {{ tag }}
-          </span>
-        {% endfor %}
-      {% endif %}
     </div>
 
     <!-- Online Presence & Location Badges -->
@@ -116,32 +104,14 @@
       </a>
     {% endif %}
 
-    <!-- Subtle Rate Your Conversation Option (Only shown after qualifying conversation) -->
-    {% if can_rate %}
-      <div id="rate-conversation-banner" style="margin-bottom: var(--space-5); padding: var(--space-3) var(--space-4); background: var(--bg-subtle); border-radius: var(--radius-lg); border: 1px dashed var(--border-color); display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); text-align: left;">
-        <div>
-          <div style="font-weight: 700; font-size: var(--text-sm); display: flex; align-items: center; gap: 6px; color: var(--text-primary);">
-            <span>⭐</span> {% trans "Rate your conversation" %}
-          </div>
-          <div style="font-size: var(--text-xs); color: var(--text-muted); margin-top: 2px;">
-            {% trans "How was your recent chat with" %} {{ profile.get_display_name }}?
-          </div>
-        </div>
-        <button type="button" onclick="openRatingModal()" class="btn btn-sm btn-primary" style="flex-shrink: 0;">
-          {% trans "Rate" %}
-        </button>
-      </div>
-    {% endif %}
-
     <!-- Profile Actions -->
     <div style="display: flex; gap: var(--space-3); justify-content: center; flex-wrap: wrap;">
-      <!-- Share Profile Button -->
-      <button type="button" onclick="shareProfile('{{ target_user.username }}')" class="btn btn-secondary">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
-        {% trans "Share Profile" %}
-      </button>
-
       {% if is_own_profile %}
+        <!-- Share Own Profile Button -->
+        <button type="button" onclick="shareProfile('{{ profile.user.username }}')" class="btn btn-secondary">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+          {% trans "Share Profile" %}
+        </button>
         <a href="{% url 'accounts:edit_profile' %}" class="btn btn-primary">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
           {% trans "Edit Profile" %}
@@ -185,7 +155,7 @@
     if (navigator.share) {
       navigator.share({
         title: '{{ profile.get_display_name }} on Nearby Chat',
-        text: "{% trans 'Check out this profile on Nearby Chat!' %}",
+        text: "{% trans 'Check out my profile on Nearby Chat!' %}",
         url: profileUrl
       }).catch((err) => {
         if (err.name !== 'AbortError') {
@@ -209,8 +179,4 @@
     });
   }
 </script>
-
-{% if can_rate %}
-  {% include 'includes/rating_modal.html' %}
-{% endif %}
 {% endblock %}

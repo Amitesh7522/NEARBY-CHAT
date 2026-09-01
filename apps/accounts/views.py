@@ -158,10 +158,7 @@ def profile_view(request, username=None):
         ).exists()
 
         if not is_blocked and request.user.is_authenticated:
-            unrated_conv = ChatService.get_unrated_qualifying_conversation(request.user, target_user)
-            if unrated_conv:
-                can_rate = True
-                unrated_conversation_id = str(unrated_conv.id)
+            pass # Rating disabled for now
 
     profile = getattr(target_user, 'profile', None)
     if profile:
