@@ -1,11 +1,11 @@
-# Generated migration for merging duplicate conversations and adding unique direct_pair_key
+# Generated migration to merge duplicate conversations and populate direct_pair_key
 
-from django.db import migrations, models
 from collections import defaultdict
+from django.db import migrations
+
 
 def merge_duplicates_and_populate_keys(apps, schema_editor):
     Conversation = apps.get_model('chat', 'Conversation')
-    ConversationParticipant = apps.get_model('chat', 'ConversationParticipant')
     Message = apps.get_model('chat', 'Message')
     ConversationRating = apps.get_model('chat', 'ConversationRating')
 
@@ -61,35 +61,12 @@ def merge_duplicates_and_populate_keys(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('chat', '0002_conversationrating'),
+        ('chat', '0003_conversation_direct_pair_key'),
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='conversation',
-            name='direct_pair_key',
-            field=models.CharField(
-                blank=True,
-                db_index=True,
-                help_text='Deterministic unique key for 1-on-1 conversations: min_id_max_id',
-                max_length=120,
-                null=True,
-            ),
-        ),
         migrations.RunPython(
             merge_duplicates_and_populate_keys,
-            reverse_code=migrations.RunPython.noop
-        ),
-        migrations.AlterField(
-            model_name='conversation',
-            name='direct_pair_key',
-            field=models.CharField(
-                blank=True,
-                db_index=True,
-                help_text='Deterministic unique key for 1-on-1 conversations: min_id_max_id',
-                max_length=120,
-                null=True,
-                unique=True,
-            ),
+            reverse_code=migrations.RunPython.noop,
         ),
     ]
