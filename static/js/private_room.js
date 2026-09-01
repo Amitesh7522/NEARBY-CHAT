@@ -165,9 +165,20 @@ class PrivateRoomClient {
     formData.append('file', file);
     formData.append('message_type', messageType);
 
-    if (typeof window.showToast === 'function') {
-      window.showToast("Uploading attachment...", "info");
-    }
+    // Show temporary upload progress indicator
+    const uploadId = 'upload_' + Date.now();
+    const pendingRow = document.createElement('div');
+    pendingRow.id = uploadId;
+    pendingRow.className = 'message-bubble-row outgoing';
+    const label = messageType === 'image' ? 'photo' : (messageType === 'audio' ? 'voice message' : 'document');
+    pendingRow.innerHTML = `
+      <div class="message-bubble" style="opacity: 0.85; display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px;">
+        <span style="width: 14px; height: 14px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; display: inline-block; animation: spin 0.8s linear infinite;"></span>
+        <span style="font-size: 11px;">Uploading ${label}...</span>
+      </div>
+    `;
+    this.streamEl.appendChild(pendingRow);
+    this.scrollToBottom();
 
     fetch(this.uploadUrl, {
       method: 'POST',
@@ -178,15 +189,25 @@ class PrivateRoomClient {
     })
     .then(res => res.json())
     .then(data => {
+      const el = document.getElementById(uploadId);
+      if (el) el.remove();
+
       if (!data.success) {
         if (typeof window.showToast === 'function') {
           window.showToast(data.error || "Upload failed.", "error");
+        } else {
+          alert(data.error || "Upload failed.");
         }
       }
     })
     .catch(err => {
+      const el = document.getElementById(uploadId);
+      if (el) el.remove();
+
       if (typeof window.showToast === 'function') {
         window.showToast("Upload error: " + err.message, "error");
+      } else {
+        alert("Upload error: " + err.message);
       }
     });
   }
@@ -205,7 +226,11 @@ class PrivateRoomClient {
 
     let mediaContent = '';
     if (data.message_type === 'image' && data.file_url) {
-      mediaContent = `<img src="${data.file_url}" alt="Image" style="max-width: 100%; max-height: 240px; border-radius: var(--radius-md); display: block; margin-bottom: 4px;" loading="lazy">`;
+      mediaContent = `
+        <div class="private-media-container" style="max-width: min(280px, 78vw); border-radius: var(--radius-md); overflow: hidden; margin: 2px 0 4px 0;">
+          <img src="${data.file_url}" alt="Image" onclick="window.openImageLightbox(this.src)" style="max-width: 100%; max-height: 260px; width: auto; height: auto; object-fit: cover; display: block; border-radius: var(--radius-md); cursor: zoom-in; transition: transform 0.2s ease;" loading="lazy">
+        </div>
+      `;
     } else if (data.message_type === 'audio' && data.file_url) {
       mediaContent = `<audio controls src="${data.file_url}" style="width: 220px; max-width: 100%; height: 36px; margin: 4px 0;"></audio>`;
     } else if (data.message_type === 'file' && data.file_url) {
@@ -219,8 +244,8 @@ class PrivateRoomClient {
     if (!isOutgoing) {
       const color = data.sender_avatar_color || '#06b6d4';
       const initials = data.sender_initials || 'PR';
-      avatarHtml = `<div style="width: 28px; height: 28px; border-radius: var(--radius-full); background: ${color}; color: white; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; margin-right: 6px;">${initials}</div>`;
-      senderNameHtml = `<div style="font-size: 10px; font-weight: 700; color: ${color}; margin-bottom: 2px;">${this.escapeHtml(data.sender_temp_name || 'Anonymous')}</div>`;
+      avatarHtml = `<div class="private-avatar-badge" style="width: 32px; height: 32px; border-radius: var(--radius-full); background: linear-gradient(135deg, ${color}, #1e1b4b); color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; letter-spacing: 0.5px; flex-shrink: 0; margin-right: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.15); border: 1.5px solid rgba(255,255,255,0.2);">${initials}</div>`;
+      senderNameHtml = `<div style="font-size: 11px; font-weight: 700; color: ${color}; margin-bottom: 2px; display: flex; align-items: center; gap: 4px;"><span>${this.escapeHtml(data.sender_temp_name || 'Anonymous')}</span><span style="font-size: 9px; font-weight: 500; color: var(--text-muted);">· Joined</span></div>`;
     }
 
     row.innerHTML = `
@@ -260,7 +285,7 @@ class PrivateRoomClient {
       const row = document.createElement('div');
       row.className = 'system-message-row';
       row.style.cssText = 'text-align: center; margin: 4px 0;';
-      row.innerHTML = `<span style="font-size: 11px; color: var(--text-muted); background: var(--bg-subtle); padding: 3px 10px; border-radius: 999px;">${this.escapeHtml(data.message)}</span>`;
+      row.innerHTML = `<span style="font-size: 11px; color: var(--text-muted); background: var(--bg-subtle); padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border-color);">${this.escapeHtml(data.message)}</span>`;
       this.streamEl.appendChild(row);
       this.scrollToBottom();
     }

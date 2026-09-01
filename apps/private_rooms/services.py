@@ -140,13 +140,6 @@ class PrivateRoomService:
                 temp_avatar_color=avatar_color
             )
 
-            # Create initial system message
-            PrivateRoomMessage.objects.create(
-                room=room,
-                content=f"🔒 Private Room created. Messages and shared media will expire in {room.duration_choice}.",
-                message_type='system'
-            )
-
         return room, participant
 
     @classmethod
