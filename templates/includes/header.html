@@ -11,10 +11,41 @@
       </button>
     {% endif %}
 
-    <a href="{% if user.is_authenticated %}{% url 'core:home' %}{% else %}{% url 'accounts:login' %}{% endif %}" class="brand-logo">
-      <img src="{% static 'images/icon.svg' %}" alt="Nearby Chat">
-      <span>Nearby<span style="color:var(--primary);">Chat</span></span>
-    </a>
+    {% if request.resolver_match.view_name == 'core:home' or not user.is_authenticated %}
+      <a href="{% if user.is_authenticated %}{% url 'core:home' %}{% else %}{% url 'accounts:login' %}{% endif %}" class="brand-logo">
+        <img src="{% static 'images/icon.svg' %}" alt="Nearby Chat">
+        <span>Nearby<span style="color:var(--primary);">Chat</span></span>
+      </a>
+    {% elif request.resolver_match.view_name == 'chat:list' or 'chat' in request.resolver_match.app_name %}
+      <h1 class="header-page-title">{% trans "Messages" %}</h1>
+    {% elif request.resolver_match.view_name == 'rooms:list' or 'rooms' in request.resolver_match.app_name %}
+      <h1 class="header-page-title">{% trans "Community Rooms" %}</h1>
+    {% elif request.resolver_match.view_name == 'accounts:profile' or request.resolver_match.view_name == 'accounts:user_profile' %}
+      <h1 class="header-page-title">{% trans "Profile" %}</h1>
+    {% elif request.resolver_match.view_name == 'accounts:onboarding' %}
+      <h1 class="header-page-title">{% trans "Profile Setup" %}</h1>
+    {% elif request.resolver_match.view_name == 'accounts:edit_profile' %}
+      <h1 class="header-page-title">{% trans "Edit Profile" %}</h1>
+    {% elif request.resolver_match.view_name == 'core:settings' %}
+      <h1 class="header-page-title">{% trans "Settings" %}</h1>
+    {% elif request.resolver_match.view_name == 'safety:blocked_users' %}
+      <h1 class="header-page-title">{% trans "Blocked Users" %}</h1>
+    {% elif request.resolver_match.view_name == 'core:invite_friends' %}
+      <h1 class="header-page-title">{% trans "Invite Friends" %}</h1>
+    {% elif request.resolver_match.view_name == 'core:help_support' %}
+      <h1 class="header-page-title">{% trans "Help & Support" %}</h1>
+    {% elif request.resolver_match.view_name == 'core:privacy_policy' %}
+      <h1 class="header-page-title">{% trans "Privacy Policy" %}</h1>
+    {% elif request.resolver_match.view_name == 'core:terms_of_use' %}
+      <h1 class="header-page-title">{% trans "Terms of Use" %}</h1>
+    {% elif 'matching' in request.resolver_match.app_name %}
+      <h1 class="header-page-title">{% trans "People Nearby" %}</h1>
+    {% else %}
+      <a href="{% if user.is_authenticated %}{% url 'core:home' %}{% else %}{% url 'accounts:login' %}{% endif %}" class="brand-logo">
+        <img src="{% static 'images/icon.svg' %}" alt="Nearby Chat">
+        <span>Nearby<span style="color:var(--primary);">Chat</span></span>
+      </a>
+    {% endif %}
   </div>
 
   <!-- Desktop Navigation (Home | Chats | Rooms | Profile) -->

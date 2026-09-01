@@ -6,9 +6,8 @@
 {% block content %}
 <div class="inbox-container" style="max-width: 680px; margin: 0 auto;">
   
-  <div class="inbox-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:var(--space-2); margin-bottom:var(--space-4);">
-    <h2>{% trans "Messages" %}</h2>
-    <div style="display:flex; gap:var(--space-2);">
+  <div class="inbox-header" style="display:flex; justify-content:flex-end; align-items:center; flex-wrap:wrap; gap:var(--space-2); margin-bottom:var(--space-4);">
+    <div style="display:flex; gap:var(--space-2); width:100%; justify-content:flex-end;">
       <button type="button" onclick="openMatchModal('quick')" class="btn btn-primary btn-sm" title="{% trans 'Instantly connect with a new user' %}">
         <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
         {% trans "New Chat" %}

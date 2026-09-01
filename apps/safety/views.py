@@ -23,7 +23,8 @@ def block_user_view(request, username):
     target_user = get_object_or_404(User, username=username)
     try:
         SafetyService.block_user(request.user, target_user)
-        messages.success(request, _('User @%(username)s has been blocked.') % {'username': username})
+        target_name = target_user.profile.get_display_name()
+        messages.success(request, _('%(name)s has been blocked.') % {'name': target_name})
     except Exception as e:
         messages.error(request, str(e))
 
@@ -37,7 +38,8 @@ def unblock_user_view(request, username):
     """Unblocks a user."""
     target_user = get_object_or_404(User, username=username)
     SafetyService.unblock_user(request.user, target_user)
-    messages.success(request, _('User @%(username)s has been unblocked.') % {'username': username})
+    target_name = target_user.profile.get_display_name()
+    messages.success(request, _('%(name)s has been unblocked.') % {'name': target_name})
     
     next_url = request.POST.get('next') or request.META.get('HTTP_REFERER') or 'safety:blocked_users'
     return redirect(next_url)

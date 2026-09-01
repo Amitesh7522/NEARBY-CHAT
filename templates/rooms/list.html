@@ -8,10 +8,7 @@
   
   <!-- Header & Create Room Button -->
   <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-3);">
-    <div>
-      <h2>{% trans "Community Rooms" %}</h2>
-      <p style="font-size: var(--text-sm); color: var(--text-muted);">{% trans "Join topic-based public rooms and chat with like-minded people." %}</p>
-    </div>
+    <p style="font-size: var(--text-sm); color: var(--text-muted); margin: 0;">{% trans "Join topic-based public rooms and chat with like-minded people." %}</p>
     
     {% if rooms %}
       <a href="{% url 'rooms:create' %}" class="btn btn-primary btn-sm">

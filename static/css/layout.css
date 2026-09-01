@@ -54,6 +54,24 @@
   flex-shrink: 0;
 }
 
+.header-page-title {
+  font-size: var(--text-lg);
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.3px;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+@media (max-width: 480px) {
+  .header-page-title {
+    font-size: var(--text-base);
+  }
+}
+
 .header-right {
   display: flex;
   align-items: center;
