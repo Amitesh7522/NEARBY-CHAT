@@ -134,7 +134,7 @@
               {% endif %}
             {% elif msg.message_type == 'audio' %}
               {% if msg.file %}
-                <audio controls src="{% url 'private_rooms:serve_media' message_id=msg.id %}" style="width: 220px; max-width: 100%; height: 36px; margin: 4px 0;"></audio>
+                <audio controls controlsList="nodownload" src="{% url 'private_rooms:serve_media' message_id=msg.id %}" style="width: 220px; max-width: 100%; height: 36px; margin: 4px 0;"></audio>
               {% endif %}
             {% elif msg.message_type == 'file' %}
               {% if msg.file %}

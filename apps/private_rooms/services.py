@@ -267,6 +267,38 @@ class PrivateRoomService:
             if file_size > MAX_IMAGE_SIZE:
                 raise ValidationError(f"Image exceeds maximum limit of {MAX_IMAGE_SIZE // (1024*1024)} MB.")
             actual_type = 'image'
+
+            # Privacy: Strip EXIF & GPS location metadata while preserving image quality & orientation
+            try:
+                import io
+                from PIL import Image, ImageOps
+                image_data = file_obj.read()
+                file_obj.seek(0)
+                img = Image.open(io.BytesIO(image_data))
+                img = ImageOps.exif_transpose(img)
+                out_io = io.BytesIO()
+                
+                fmt = img.format if img.format in ('JPEG', 'PNG', 'WEBP', 'GIF') else ('JPEG' if ext in ('.jpg', '.jpeg') else 'PNG')
+                if fmt == 'JPEG':
+                    if img.mode in ('RGBA', 'P'):
+                        img = img.convert('RGB')
+                    img.save(out_io, format='JPEG', quality=88, optimize=True)
+                elif fmt == 'PNG':
+                    img.save(out_io, format='PNG', optimize=True)
+                elif fmt == 'WEBP':
+                    img.save(out_io, format='WEBP', quality=88)
+                elif fmt == 'GIF':
+                    img.save(out_io, format='GIF')
+                else:
+                    if img.mode in ('RGBA', 'P'):
+                        img = img.convert('RGB')
+                    img.save(out_io, format='JPEG', quality=88)
+                
+                out_bytes = out_io.getvalue()
+                file_obj = ContentFile(out_bytes, name=unique_storage_name)
+                file_size = len(out_bytes)
+            except Exception:
+                file_obj.seek(0)
         elif message_type == 'audio':
             if ext not in ALLOWED_AUDIO_EXTENSIONS:
                 # Accept .webm/.wav fallback

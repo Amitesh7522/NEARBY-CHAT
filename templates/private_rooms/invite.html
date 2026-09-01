@@ -53,6 +53,17 @@
         </div>
       </div>
 
+      <!-- Realistic Privacy Notice -->
+      <div style="background: rgba(99, 102, 241, 0.05); border: 1px solid rgba(99, 102, 241, 0.16); border-radius: var(--radius-md); padding: 10px 12px; margin-top: 2px;">
+        <div style="font-size: 11px; font-weight: 700; color: var(--text-secondary); margin-bottom: 3px; display: flex; align-items: center; gap: 5px;">
+          <span>🛡️</span>
+          <span>{% trans "Privacy Notice" %}</span>
+        </div>
+        <p style="font-size: 10.5px; color: var(--text-muted); margin: 0; line-height: 1.45;">
+          {% trans "Private Rooms are temporary and anonymous. Your NearbyChat profile is hidden and room content expires automatically. However, other participants may still screenshot, screen-record, copy, or capture content displayed on their device." %}
+        </p>
+      </div>
+
       <button type="submit" class="btn btn-primary btn-lg" style="width: 100%; justify-content: center; font-weight: 700; padding: 13px; margin-top: var(--space-2); gap: 8px;">
         {% trans "Join Private Room" %} &rarr;
       </button>

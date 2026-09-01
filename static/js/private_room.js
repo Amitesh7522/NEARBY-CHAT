@@ -232,7 +232,7 @@ class PrivateRoomClient {
         </div>
       `;
     } else if (data.message_type === 'audio' && data.file_url) {
-      mediaContent = `<audio controls src="${data.file_url}" style="width: 220px; max-width: 100%; height: 36px; margin: 4px 0;"></audio>`;
+      mediaContent = `<audio controls controlsList="nodownload" src="${data.file_url}" style="width: 220px; max-width: 100%; height: 36px; margin: 4px 0;"></audio>`;
     } else if (data.message_type === 'file' && data.file_url) {
       mediaContent = `<a href="${data.file_url}" class="btn btn-sm btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; text-decoration: none; padding: 6px 12px; margin: 4px 0; font-size: 11px;">📄 <span>${data.file_name || 'Download File'}</span></a>`;
     } else {

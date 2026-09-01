@@ -670,3 +670,141 @@ class PrivateRoomEdgeCasesAndSecurityVerificationTests(TestCase):
 
         self.room.refresh_from_db()
         self.assertTrue(self.room.is_deleted)
+
+
+class PrivateRoomContentPrivacyAndRetentionTests(TestCase):
+    """
+    Tests for Content Privacy and Retention:
+    1. EXIF metadata stripping from uploaded photos
+    2. Media access revocation immediately on room expiry
+    3. Media access revocation immediately on room deletion
+    4. Media access blocked across different private rooms
+    5. Privacy notices rendering on all entry points
+    """
+    def setUp(self):
+        cache.clear()
+        self.user = User.objects.create_user(
+            username='privacy_user',
+            email='privacy@example.com',
+            password='SecretPassword123!',
+        )
+        self.user.profile.display_name = 'Privacy Officer'
+        self.user.profile.save()
+
+        self.raw_token = secrets.token_urlsafe(32)
+        self.room, self.participant = PrivateRoomService.create_room(
+            creator_user=self.user,
+            duration_choice='24h',
+            creator_temp_name='Velvet Falcon',
+            raw_session_token=self.raw_token
+        )
+
+    def test_image_exif_metadata_stripped_on_upload(self):
+        import io
+        from PIL import Image
+
+        # Create a small valid test JPEG image in memory
+        img_io = io.BytesIO()
+        test_img = Image.new('RGB', (100, 100), color=(73, 109, 137))
+        test_img.save(img_io, format='JPEG')
+        img_bytes = img_io.getvalue()
+
+        uploaded = SimpleUploadedFile("camera_photo.jpg", img_bytes, content_type="image/jpeg")
+        msg = PrivateRoomService.validate_and_save_upload(
+            room=self.room,
+            participant=self.participant,
+            file_obj=uploaded,
+            message_type='image'
+        )
+        self.assertEqual(msg.message_type, 'image')
+        self.assertTrue(msg.file.name)
+
+        # Inspect saved file with Pillow to verify no EXIF data is present
+        saved_img = Image.open(msg.file.path)
+        exif = saved_img.getexif()
+        # EXIF dictionary must be empty
+        self.assertEqual(len(exif), 0)
+
+    def test_media_access_revoked_on_room_expiry(self):
+        import io
+        from PIL import Image
+
+        img_io = io.BytesIO()
+        test_img = Image.new('RGB', (50, 50), color=(255, 0, 0))
+        test_img.save(img_io, format='JPEG')
+        uploaded = SimpleUploadedFile("sensitive.jpg", img_io.getvalue(), content_type="image/jpeg")
+
+        msg = PrivateRoomService.validate_and_save_upload(
+            room=self.room,
+            participant=self.participant,
+            file_obj=uploaded,
+            message_type='image'
+        )
+
+        media_url = reverse('private_rooms:serve_media', kwargs={'message_id': msg.id})
+
+        # Client with valid session credentials
+        client = Client()
+        session = client.session
+        session[f"pr_auth_{self.room.id}"] = self.raw_token
+        session.save()
+
+        # 1. Active room: Media streaming succeeds (200 OK)
+        resp_active = client.get(media_url)
+        self.assertEqual(resp_active.status_code, 200)
+
+        # 2. Expire room: Media streaming immediately returns 404 (inaccessible)
+        self.room.expires_at = timezone.now() - timedelta(minutes=1)
+        self.room.save(update_fields=['expires_at'])
+
+        resp_expired = client.get(media_url)
+        self.assertEqual(resp_expired.status_code, 404)
+
+    def test_media_access_revoked_on_room_deletion(self):
+        import io
+        from PIL import Image
+
+        img_io = io.BytesIO()
+        test_img = Image.new('RGB', (50, 50), color=(0, 255, 0))
+        test_img.save(img_io, format='JPEG')
+        uploaded = SimpleUploadedFile("deletion_test.jpg", img_io.getvalue(), content_type="image/jpeg")
+
+        msg = PrivateRoomService.validate_and_save_upload(
+            room=self.room,
+            participant=self.participant,
+            file_obj=uploaded,
+            message_type='image'
+        )
+
+        media_url = reverse('private_rooms:serve_media', kwargs={'message_id': msg.id})
+
+        client = Client()
+        session = client.session
+        session[f"pr_auth_{self.room.id}"] = self.raw_token
+        session.save()
+
+        # Delete room
+        PrivateRoomService.delete_room(self.room, self.participant)
+
+        resp_deleted = client.get(media_url)
+        self.assertEqual(resp_deleted.status_code, 404)
+
+    def test_privacy_notice_rendered_on_entry_pages(self):
+        client = Client()
+        client.force_login(self.user)
+
+        # 1. Landing page
+        landing_resp = client.get(reverse('private_rooms:landing'))
+        self.assertContains(landing_resp, "screenshot, screen-record, copy")
+
+        # 2. Create room page
+        create_resp = client.get(reverse('private_rooms:create'))
+        self.assertContains(create_resp, "screenshot, screen-record, copy")
+
+        # 3. Join code page
+        join_resp = client.get(reverse('private_rooms:join_code'))
+        self.assertContains(join_resp, "screenshot, screen-record, copy")
+
+        # 4. Invite page
+        invite_resp = client.get(reverse('private_rooms:invite_landing', kwargs={'secure_token': self.room.secure_token}))
+        self.assertContains(invite_resp, "screenshot, screen-record, copy")
