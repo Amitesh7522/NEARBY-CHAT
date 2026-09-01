@@ -20,7 +20,7 @@
       </p>
     </div>
 
-    <form method="post" action="{% url 'accounts:onboarding' %}" id="onboarding-form" style="width: 100%; max-width: 100%; box-sizing: border-box;">
+    <form method="post" action="{% url 'accounts:onboarding' %}" enctype="multipart/form-data" id="onboarding-form" style="width: 100%; max-width: 100%; box-sizing: border-box;">
       {% csrf_token %}
 
       {% if form.non_field_errors %}
@@ -29,10 +29,29 @@
         </div>
       {% endif %}
 
-      <!-- 1. Gender Section -->
+      <!-- 1. Profile Photo Section (Optional) -->
+      <div class="form-group" style="background: var(--bg-surface); padding: var(--space-4); border-radius: var(--radius-lg); border: 1px solid var(--border-color); margin-bottom: var(--space-4); text-align: center;">
+        <label class="form-label" style="font-weight: 700; margin-bottom: 4px;">
+          {% trans "1. Profile Photo (Optional)" %}
+        </label>
+        <p style="font-size: var(--text-xs); color: var(--text-secondary); margin-top: 0; margin-bottom: var(--space-3);">
+          {% trans "Upload your photo or keep your avatar." %}
+        </p>
+
+        <div style="display: flex; justify-content: center; margin-bottom: var(--space-3);">
+          <img id="onboarding-avatar-preview" src="{{ profile.get_avatar_url }}" alt="{{ profile.get_display_name }}" class="avatar avatar-xl" style="border: 3px solid var(--primary); box-shadow: 0 4px 14px rgba(99, 102, 241, 0.25);">
+        </div>
+
+        <div style="max-width: 280px; margin: 0 auto;">
+          <input type="file" name="avatar" id="id_avatar" accept="image/*" class="input-field" style="font-size: var(--text-xs); padding: 6px;" onchange="previewOnboardingAvatar(this)">
+        </div>
+        {% if form.avatar.errors %}<span style="color:var(--error);font-size:var(--text-xs);display:block;margin-top:4px;">{{ form.avatar.errors.0 }}</span>{% endif %}
+      </div>
+
+      <!-- 2. Gender Section -->
       <div class="form-group" style="background: var(--bg-surface); padding: var(--space-4); border-radius: var(--radius-lg); border: 1px solid var(--border-color); margin-bottom: var(--space-4);">
         <label class="form-label" style="font-weight: 700; margin-bottom: 4px;">
-          {% trans "1. Gender" %}
+          {% trans "2. Gender" %}
         </label>
         <p style="font-size: var(--text-xs); color: var(--text-secondary); margin-top: 0; margin-bottom: var(--space-3);">
           {% trans "Select your gender identity." %}
@@ -61,11 +80,11 @@
         {% if form.gender.errors %}<span style="color:var(--error);font-size:var(--text-xs);display:block;margin-top:4px;">{{ form.gender.errors.0 }}</span>{% endif %}
       </div>
 
-      <!-- 2. Interests Section (Requires at least 3, max 5) -->
+      <!-- 3. Interests Section (Requires at least 3, max 5) -->
       <div class="form-group" style="background: var(--bg-surface); padding: var(--space-4); border-radius: var(--radius-lg); border: 1px solid var(--border-color); margin-bottom: var(--space-5);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
           <label class="form-label" style="font-weight: 700; margin: 0;">
-            {% trans "2. Interests & Passions (Choose 3 to 5)" %}
+            {% trans "3. Interests & Passions (Choose 3 to 5)" %}
           </label>
           <span id="interest-counter" style="font-size: 11px; font-weight: 700; color: var(--primary);">
             {% trans "Selected" %}: 0/5
@@ -107,6 +126,19 @@
 </div>
 
 <script>
+  function previewOnboardingAvatar(input) {
+    if (input.files && input.files[0]) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const preview = document.getElementById('onboarding-avatar-preview');
+        if (preview) {
+          preview.src = e.target.result;
+        }
+      };
+      reader.readAsDataURL(input.files[0]);
+    }
+  }
+
   function updateGenderStyle(radio) {
     document.querySelectorAll('.gender-pill').forEach(pill => {
       const btn = pill.querySelector('.gender-btn');

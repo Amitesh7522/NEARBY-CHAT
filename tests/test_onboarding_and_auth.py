@@ -133,6 +133,44 @@ class OnboardingAndAuthTests(TestCase):
         self.assertFalse(user.profile.is_temporary_name)
         self.assertEqual(user.profile.gender, 'female')
         self.assertEqual(user.profile.interests.count(), 3)
+        self.assertEqual(user.profile.get_completion_checklist()['completed_count'], 3)
+
+    def test_profile_completion_checklist_calculation(self):
+        """Verify profile completion logic: Name is complete after signup (1/4), and 4/4 when all items complete."""
+        user = User.objects.create_user(
+            username='user_complete_check',
+            email='complete_check@example.com',
+            password='TestPassword123!',
+            is_verified=True
+        )
+        user.profile.display_name = 'Karan Sharma'
+        user.profile.save()
+
+        # Right after signup with name only: Name ✓, Photo ○, Gender ○, Interests ○ (1/4)
+        checklist = user.profile.get_completion_checklist()
+        self.assertTrue(checklist['has_name'])
+        self.assertFalse(checklist['has_photo'])
+        self.assertFalse(checklist['has_gender'])
+        self.assertFalse(checklist['has_interests'])
+        self.assertEqual(checklist['completed_count'], 1)
+        self.assertFalse(checklist['is_completed'])
+
+        # After selecting gender and 3 interests (3/4)
+        user.profile.gender = 'male'
+        user.profile.interests.set([self.gaming, self.music, self.tech])
+        user.profile.save()
+        checklist = user.profile.get_completion_checklist()
+        self.assertEqual(checklist['completed_count'], 3)
+        self.assertFalse(checklist['is_completed'])
+
+        # After uploading custom photo (4/4)
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        test_img = SimpleUploadedFile('avatar.jpg', b'dummy_content', content_type='image/jpeg')
+        user.profile.avatar = test_img
+        user.profile.save()
+        checklist = user.profile.get_completion_checklist()
+        self.assertEqual(checklist['completed_count'], 4)
+        self.assertTrue(checklist['is_completed'])
         self.assertTrue(user.profile.is_profile_completed)
 
     def test_step2_onboarding_skip_for_now(self):

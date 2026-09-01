@@ -118,27 +118,31 @@ UserRegisterForm = AccountRegisterForm
 
 class OnboardingProfileForm(forms.ModelForm):
     """
-    Step 2 Profile Setup Form:
-    Asks ONLY for:
-    1. Gender
-    2. Interests (Requires at least 3, max 5)
-    Reuses Name already collected during signup.
+    Step 2 Profile Setup Form (100% Optional):
+    Focuses on:
+    1. Profile photo / Avatar (Optional)
+    2. Gender (Optional)
+    3. Interests (Requires at least 3 if submitted)
+    Name was already collected during signup.
     """
     interests = forms.ModelMultipleChoiceField(
         queryset=Interest.objects.all(),
-        required=True,
+        required=False,
         widget=forms.CheckboxSelectMultiple()
     )
     gender = forms.ChoiceField(
         choices=Profile.GENDER_CHOICES,
-        required=True,
+        required=False,
         initial='prefer_not_to_say',
         widget=forms.RadioSelect(choices=Profile.GENDER_CHOICES)
     )
 
     class Meta:
         model = Profile
-        fields = ['gender', 'interests']
+        fields = ['avatar', 'avatar_preset', 'gender', 'interests']
+        widgets = {
+            'avatar_preset': forms.HiddenInput(),
+        }
 
     def clean_interests(self):
         interests = self.cleaned_data.get('interests')

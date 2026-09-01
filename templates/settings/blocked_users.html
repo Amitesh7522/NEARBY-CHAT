@@ -17,10 +17,10 @@
     {% for block in blocked_list %}
       <div style="display: flex; align-items: center; justify-content: space-between; padding: var(--space-4); border-bottom: 1px solid var(--border-color);">
         <div style="display: flex; align-items: center; gap: var(--space-3);">
-          <img src="{{ block.blocked.profile.get_avatar_url|default:'/static/images/default-avatar.svg' }}" class="avatar avatar-md" alt="{{ block.blocked.username }}">
+          <img src="{{ block.blocked.profile.get_avatar_url|default:'/static/images/default-avatar.svg' }}" class="avatar avatar-md" alt="{{ block.blocked.profile.get_display_name }}">
           <div>
-            <div style="font-weight: 600; font-size: var(--text-sm);">{{ block.blocked.profile.get_display_name|default:block.blocked.username }}</div>
-            <div style="font-size: var(--text-xs); color: var(--text-muted);">@{{ block.blocked.username }} &bull; {% trans "Blocked on" %} {{ block.created_at|date:"M d, Y" }}</div>
+            <div style="font-weight: 600; font-size: var(--text-sm);">{{ block.blocked.profile.get_display_name }}</div>
+            <div style="font-size: var(--text-xs); color: var(--text-muted);">{% trans "Blocked on" %} {{ block.created_at|date:"M d, Y" }}</div>
           </div>
         </div>
 

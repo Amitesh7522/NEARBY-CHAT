@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load i18n static %}
 
-{% block title %}{{ other_profile.get_display_name|default:other_user.username }} — Nearby Chat{% endblock %}
+{% block title %}{{ other_profile.get_display_name }} — Nearby Chat{% endblock %}
 
 {% block body_class %}is-chat-page{% endblock %}
 
@@ -18,17 +18,17 @@
       {% if other_user %}
         <a href="{% url 'accounts:user_profile' username=other_user.username %}" class="chat-partner-info">
           <div class="avatar-container">
-            <img src="{{ other_profile.get_avatar_url|default:'/static/images/default-avatar.svg' }}" alt="{{ other_user.username }}" class="avatar avatar-sm">
+            <img src="{{ other_profile.get_avatar_url|default:'/static/images/default-avatar.svg' }}" alt="{{ other_profile.get_display_name }}" class="avatar avatar-sm">
             {% if other_profile.show_online_status %}
               <span class="status-dot {% if other_profile.is_currently_online %}online{% else %}offline{% endif %}"></span>
             {% endif %}
           </div>
           <div class="chat-partner-details">
-            <h3>{{ other_profile.get_display_name|default:other_user.username }}</h3>
+            <h3>{{ other_profile.get_display_name }}</h3>
             {% if other_profile.show_online_status and other_profile.is_currently_online %}
-              <span class="online-text">{% trans "Online" %}</span>
-            {% else %}
-              <span>@{{ other_user.username }}</span>
+              <span class="online-text">{% trans "Active Now" %}</span>
+            {% elif other_profile.get_badge_details.name %}
+              <span>{{ other_profile.get_badge_details.name }}</span>
             {% endif %}
           </div>
         </a>
@@ -76,7 +76,7 @@
 
   <!-- Typing Indicator -->
   <div id="typing-indicator" class="typing-indicator">
-    <span>{{ other_profile.get_display_name|default:other_user.username }} {% trans "is typing" %}</span>
+    <span>{{ other_profile.get_display_name }} {% trans "is typing" %}</span>
     <span class="typing-dot"></span>
     <span class="typing-dot"></span>
     <span class="typing-dot"></span>

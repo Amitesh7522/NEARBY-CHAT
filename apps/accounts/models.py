@@ -194,17 +194,21 @@ class Profile(models.Model):
 
     @property
     def is_profile_completed(self):
-        """Returns True if the user has customized their display name and added at least 1 interest."""
-        has_real_name = not self.is_temporary_name and bool(self.display_name)
-        has_interests = self.interests.exists()
-        return has_real_name and has_interests
+        """Returns True if the user has completed all 4 profile personalization items (Name, Photo, Gender, 3+ Interests)."""
+        return self.get_completion_checklist()['is_completed']
 
     def get_completion_checklist(self):
-        """Returns a checklist dict for profile completion UI."""
-        has_name = not self.is_temporary_name and bool(self.display_name)
-        has_photo = bool(self.avatar) or bool(self.avatar_preset)
+        """
+        Returns a checklist dict for profile completion UI:
+        1. Name — collected during signup (always complete if display_name is present)
+        2. Profile photo — user-uploaded custom photo (excluding auto-assigned default avatar)
+        3. Gender — intentionally selected gender identity
+        4. Interests — at least 3 chosen interests
+        """
+        has_name = bool(self.display_name and self.display_name.strip())
+        has_photo = bool(self.avatar)
         has_gender = self.gender not in ('', 'prefer_not_to_say', None)
-        has_interests = self.interests.exists()
+        has_interests = self.interests.count() >= 3
         
         total_items = 4
         completed_items = sum([1 for item in [has_name, has_photo, has_gender, has_interests] if item])
@@ -218,7 +222,7 @@ class Profile(models.Model):
             'completed_count': completed_items,
             'total_count': total_items,
             'percentage': percentage,
-            'is_completed': completed_items >= 3,
+            'is_completed': completed_items == 4,
         }
 
     @property

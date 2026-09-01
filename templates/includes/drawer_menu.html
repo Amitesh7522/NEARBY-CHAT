@@ -15,13 +15,13 @@
   <nav class="drawer-nav">
     <!-- User summary item -->
     <a href="{% url 'accounts:profile' %}" style="padding: var(--space-4) var(--space-5); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: var(--space-3); text-decoration: none; color: inherit;">
-      <img src="{{ user.profile.get_avatar_url }}" class="avatar avatar-md" alt="{{ user.username }}">
+      <img src="{{ user.profile.get_avatar_url }}" class="avatar avatar-md" alt="{{ user.profile.get_display_name }}">
       <div style="min-width: 0;">
         <div style="font-weight: 700; font-size: var(--text-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px;">
           {{ user.profile.get_display_name }}
           <span style="font-size: 11px;">{{ user.profile.get_badge_details.emoji }}</span>
         </div>
-        <div style="font-size: var(--text-xs); color: var(--text-muted);">@{{ user.username }}</div>
+        <div style="font-size: var(--text-xs); color: var(--text-muted);">{{ user.profile.get_badge_details.name }}</div>
       </div>
     </a>
 

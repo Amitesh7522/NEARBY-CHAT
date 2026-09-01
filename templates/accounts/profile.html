@@ -17,9 +17,6 @@
 
     <div style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: var(--space-3);">
       <h2 style="margin: 0;">{{ profile.get_display_name }}</h2>
-      {% if profile.is_temporary_name %}
-        <span class="badge" style="font-size: 10px; background: rgba(239, 68, 68, 0.1); color: var(--error); border: 1px solid rgba(239, 68, 68, 0.25);">{% trans "Temporary name" %}</span>
-      {% endif %}
     </div>
 
     <!-- Community Participation Badge -->

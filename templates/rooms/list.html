@@ -13,10 +13,12 @@
       <p style="font-size: var(--text-sm); color: var(--text-muted);">{% trans "Join topic-based public rooms and chat with like-minded people." %}</p>
     </div>
     
-    <a href="{% url 'rooms:create' %}" class="btn btn-primary btn-sm">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-      {% trans "Create Room" %}
-    </a>
+    {% if rooms %}
+      <a href="{% url 'rooms:create' %}" class="btn btn-primary btn-sm">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        {% trans "Create Room" %}
+      </a>
+    {% endif %}
   </div>
 
   <!-- Search & Filter Bar -->
@@ -64,10 +66,16 @@
         </div>
       </div>
     {% empty %}
-      <div class="card empty-state" style="grid-column: 1 / -1;">
-        <h3>{% trans "No rooms found" %}</h3>
-        <p>{% trans "Be the first to start a community room on this topic!" %}</p>
-        <a href="{% url 'rooms:create' %}" class="btn btn-primary" style="margin-top: var(--space-3);">{% trans "Create Room" %}</a>
+      <div class="card empty-state" style="grid-column: 1 / -1; text-align: center; padding: var(--space-8) var(--space-4);">
+        <div class="empty-icon" style="margin: 0 auto var(--space-3); width: 56px; height: 56px; border-radius: var(--radius-full); background: rgba(99, 102, 241, 0.12); color: var(--primary); display: flex; align-items: center; justify-content: center;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        </div>
+        <h3>{% trans "No rooms yet" %}</h3>
+        <p style="color: var(--text-muted); font-size: var(--text-sm); margin-top: 4px;">{% trans "Start a room and meet people with similar interests." %}</p>
+        <a href="{% url 'rooms:create' %}" class="btn btn-primary" style="margin-top: var(--space-4); display: inline-flex; align-items: center; gap: 6px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          {% trans "Create Room" %}
+        </a>
       </div>
     {% endfor %}
   </div>

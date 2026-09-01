@@ -94,7 +94,7 @@ def onboarding_view(request):
         return redirect('core:home')
 
     if request.method == 'POST':
-        form = OnboardingProfileForm(request.POST, instance=profile)
+        form = OnboardingProfileForm(request.POST, request.FILES, instance=profile)
         if form.is_valid():
             form.save()
             messages.success(request, _('Profile updated! Welcome to Nearby Chat.'))
