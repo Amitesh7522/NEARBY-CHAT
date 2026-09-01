@@ -62,10 +62,17 @@ class MatchmakingService:
                 partner_user = candidate_queue.user
                 partner_channel = candidate_queue.channel_name
 
-                # Create brand new random conversation
-                conv = Conversation.objects.create(type='random')
-                ConversationParticipant.objects.create(conversation=conv, user=user)
-                ConversationParticipant.objects.create(conversation=conv, user=partner_user)
+                # Create or get 1-on-1 conversation with database unique key protection
+                pair_key = Conversation.get_pair_key(user.id, partner_user.id)
+                conv, created = Conversation.objects.get_or_create(
+                    direct_pair_key=pair_key,
+                    defaults={
+                        'type': 'random',
+                        'is_active': True,
+                    }
+                )
+                ConversationParticipant.objects.get_or_create(conversation=conv, user=user)
+                ConversationParticipant.objects.get_or_create(conversation=conv, user=partner_user)
 
                 # Remove candidate from queue and delete any existing queue entry for this user
                 candidate_queue.delete()

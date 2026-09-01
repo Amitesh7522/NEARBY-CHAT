@@ -85,3 +85,88 @@ class ChatTestCase(TestCase):
 
         # Verify a conversation was created
         self.assertEqual(Conversation.objects.filter(type='direct').count(), 1)
+
+    def test_block_unblock_cycle_preserves_single_conversation_and_messages(self):
+        """
+        Comprehensive test of block -> unblock -> start chat flow:
+        - Exactly ONE conversation exists throughout.
+        - Messages are preserved.
+        - Chat summary returns only 1 card for the user.
+        """
+        from django.urls import reverse
+        from apps.safety.services import SafetyService
+
+        # 1. Start conversation and send messages
+        conv, created = ChatService.get_or_create_direct_conversation(self.user1, self.user2)
+        self.assertTrue(created)
+        ChatService.send_message(conv.id, self.user1, "Hey Bob, how are you?")
+        ChatService.send_message(conv.id, self.user2, "Hey Alice! All good.")
+        self.assertEqual(Message.objects.filter(conversation=conv).count(), 2)
+
+        # 2. Block user2
+        SafetyService.block_user(self.user1, self.user2)
+        self.assertTrue(Block.objects.filter(blocker=self.user1, blocked=self.user2).exists())
+
+        # Verify message send is blocked
+        with self.assertRaises(PermissionDenied):
+            ChatService.send_message(conv.id, self.user1, "Are you there?")
+
+        # 3. Unblock user2
+        SafetyService.unblock_user(self.user1, self.user2)
+        self.assertFalse(Block.objects.filter(blocker=self.user1, blocked=self.user2).exists())
+
+        # 4. Open chat again via start_direct_chat_view
+        self.client.force_login(self.user1)
+        response = self.client.get(reverse('chat:start_direct', kwargs={'username': self.user2.username}))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('chat:detail', kwargs={'conversation_id': conv.id}))
+
+        # 5. Verify database integrity
+        all_convs_between_pair = ConversationParticipant.objects.filter(
+            user=self.user1
+        ).values_list('conversation_id', flat=True)
+        shared_convs = ConversationParticipant.objects.filter(
+            conversation_id__in=all_convs_between_pair,
+            user=self.user2
+        )
+        self.assertEqual(shared_convs.count(), 1, "Must have exactly ONE conversation between pair")
+        self.assertEqual(Conversation.objects.count(), 1)
+
+        # Verify messages remain intact
+        messages_list = ChatService.get_messages_page(conv.id, self.user1)
+        self.assertEqual(len(messages_list), 2)
+        self.assertEqual(messages_list[0].content, "Hey Bob, how are you?")
+        self.assertEqual(messages_list[1].content, "Hey Alice! All good.")
+
+        # 6. Verify chat summary has exactly 1 entry
+        summary = ChatService.get_user_conversations_summary(self.user1)
+        self.assertEqual(len(summary), 1)
+        self.assertEqual(summary[0]['other_user'], self.user2)
+
+    def test_random_to_direct_transition_reuses_conversation(self):
+        """If users met via random matching, opening direct chat reuses the existing conversation."""
+        from django.urls import reverse
+        pair_key = Conversation.get_pair_key(self.user1.id, self.user2.id)
+        
+        # Initially created via random matching
+        rand_conv = Conversation.objects.create(type='random', direct_pair_key=pair_key)
+        ConversationParticipant.objects.create(conversation=rand_conv, user=self.user1)
+        ConversationParticipant.objects.create(conversation=rand_conv, user=self.user2)
+        ChatService.send_message(rand_conv.id, self.user1, "Random match hello!")
+
+        # User1 later clicks 'Message' on User2's profile
+        direct_conv, created = ChatService.get_or_create_direct_conversation(self.user1, self.user2)
+        self.assertFalse(created, "Must reuse existing conversation, not create a new one")
+        self.assertEqual(direct_conv.id, rand_conv.id)
+        self.assertEqual(Conversation.objects.count(), 1)
+
+    def test_database_level_pair_key_uniqueness(self):
+        """Database uniquely constrains direct_pair_key, preventing duplicate 1-on-1 conversations."""
+        from django.db.utils import IntegrityError
+        pair_key = Conversation.get_pair_key(self.user1.id, self.user2.id)
+
+        Conversation.objects.create(type='direct', direct_pair_key=pair_key)
+        
+        with self.assertRaises(IntegrityError):
+            Conversation.objects.create(type='direct', direct_pair_key=pair_key)
+

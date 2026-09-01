@@ -14,6 +14,7 @@ class ChatService:
     def get_or_create_direct_conversation(user1, user2):
         """
         Retrieves or creates a 1-on-1 direct conversation between two users.
+        Guarantees exact uniqueness at the database level using direct_pair_key.
         Checks blocking rules before initiating.
         """
         if user1 == user2:
@@ -25,10 +26,24 @@ class ChatService:
         ).exists():
             raise PermissionDenied("Cannot start conversation due to block rules.")
 
-        # Find existing shared direct conversation
+        pair_key = Conversation.get_pair_key(user1.id, user2.id)
+
+        # 1. Primary lookup by deterministic direct_pair_key
+        if pair_key:
+            existing = Conversation.objects.filter(direct_pair_key=pair_key).prefetch_related('participants').first()
+            if existing:
+                if not ConversationParticipant.objects.filter(conversation=existing, user=user1).exists():
+                    ConversationParticipant.objects.get_or_create(conversation=existing, user=user1)
+                if not ConversationParticipant.objects.filter(conversation=existing, user=user2).exists():
+                    ConversationParticipant.objects.get_or_create(conversation=existing, user=user2)
+                if not existing.is_active:
+                    existing.is_active = True
+                    existing.save(update_fields=['is_active'])
+                return existing, False
+
+        # 2. Secondary fallback lookup by shared participants (across all types)
         convs_user1 = ConversationParticipant.objects.filter(
-            user=user1,
-            conversation__type='direct'
+            user=user1
         ).values_list('conversation_id', flat=True)
 
         shared_conv = ConversationParticipant.objects.filter(
@@ -37,14 +52,28 @@ class ChatService:
         ).select_related('conversation').first()
 
         if shared_conv:
-            return shared_conv.conversation, False
+            conv = shared_conv.conversation
+            if pair_key and not conv.direct_pair_key:
+                conv.direct_pair_key = pair_key
+                conv.save(update_fields=['direct_pair_key'])
+            if not conv.is_active:
+                conv.is_active = True
+                conv.save(update_fields=['is_active'])
+            return conv, False
 
+        # 3. Create atomically with database unique key protection
         with transaction.atomic():
-            conversation = Conversation.objects.create(type='direct')
-            ConversationParticipant.objects.create(conversation=conversation, user=user1)
-            ConversationParticipant.objects.create(conversation=conversation, user=user2)
+            conversation, created = Conversation.objects.get_or_create(
+                direct_pair_key=pair_key,
+                defaults={
+                    'type': 'direct',
+                    'is_active': True,
+                }
+            )
+            ConversationParticipant.objects.get_or_create(conversation=conversation, user=user1)
+            ConversationParticipant.objects.get_or_create(conversation=conversation, user=user2)
 
-        return conversation, True
+        return conversation, created
 
     @staticmethod
     def send_message(conversation_id, sender, content, client_msg_id=None, message_type='text'):
@@ -182,6 +211,7 @@ class ChatService:
     def get_user_conversations_summary(user):
         """
         Fetches all conversations for user with last message, unread count, and other participant details.
+        Strictly deduplicates by conversation partner so no partner ever appears twice.
         """
         participations = ConversationParticipant.objects.filter(
             user=user,
@@ -189,11 +219,15 @@ class ChatService:
         ).select_related('conversation').order_by('-conversation__updated_at')
 
         summary = []
+        seen_partner_ids = set()
+
         for p in participations:
             conv = p.conversation
             other_user = conv.get_other_participant(user)
-            if not other_user:
+            if not other_user or other_user.id in seen_partner_ids:
                 continue
+
+            seen_partner_ids.add(other_user.id)
 
             last_message = conv.messages.filter(is_deleted=False).order_by('-created_at').first()
             

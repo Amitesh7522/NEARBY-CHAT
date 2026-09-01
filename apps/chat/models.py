@@ -18,6 +18,14 @@ class Conversation(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     type = models.CharField(max_length=15, choices=CONVERSATION_TYPES, default='direct')
+    direct_pair_key = models.CharField(
+        max_length=120,
+        unique=True,
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text=_("Deterministic unique key for 1-on-1 conversations: min_id_max_id")
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True, db_index=True)
     is_active = models.BooleanField(default=True)
@@ -29,6 +37,14 @@ class Conversation(models.Model):
 
     def __str__(self):
         return f"Conversation {self.id} ({self.type})"
+
+    @staticmethod
+    def get_pair_key(user1_id, user2_id):
+        """Returns canonical deterministic pair key for two user IDs."""
+        if not user1_id or not user2_id or user1_id == user2_id:
+            return None
+        u1_str, u2_str = str(user1_id), str(user2_id)
+        return f"{min(u1_str, u2_str)}_{max(u1_str, u2_str)}"
 
     def get_other_participant(self, user):
         """Returns the other user participant in a 2-person conversation."""
