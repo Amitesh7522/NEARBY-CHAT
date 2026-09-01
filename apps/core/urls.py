@@ -5,6 +5,7 @@ app_name = 'core'
 
 urlpatterns = [
     path('', views.home_view, name='home'),
+    path('discover/', views.discover_view, name='discover'),
     path('settings/', views.settings_view, name='settings'),
     path('settings/privacy/', views.privacy_settings_view, name='privacy_settings'),
     path('settings/notifications/', views.notification_settings_view, name='notification_settings'),

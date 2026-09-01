@@ -117,3 +117,13 @@ class PWAAndProximityTests(TestCase):
         res_city = self.client.get(reverse('core:home') + '?radius=city')
         self.assertEqual(res_city.status_code, 200)
         self.assertIn(self.user2, [u for u in res_city.context['discover_users']])
+
+    def test_discover_view_dedicated_page(self):
+        """Dedicated Discover People page loads with filtering and user list."""
+        self.client.force_login(self.user1)
+        res = self.client.get(reverse('core:discover'))
+        self.assertEqual(res.status_code, 200)
+        self.assertIn('discover_users', res.context)
+        self.assertIn('all_interests', res.context)
+        self.assertContains(res, "Discover People")
+        self.assertContains(res, "Any Distance")

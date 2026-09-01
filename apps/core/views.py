@@ -132,9 +132,72 @@ def home_view(request):
     return render(request, 'home/index.html', {
         'greeting': greeting,
         'online_users': online_users,
-        'discover_users': discover_users_list[:12],
+        'discover_users': discover_users_list[:15],
         'featured_rooms': featured_rooms,
         'recent_chats': recent_chats,
+        'user_has_location': bool(my_lat and my_lon),
+        'user_location_name': my_profile.location_name,
+    })
+
+
+@login_required
+def discover_view(request):
+    """
+    Dedicated Discover People page with full location radius and interest filtering.
+    """
+    blocked_by_user = Block.objects.filter(blocker=request.user).values_list('blocked_id', flat=True)
+    blocking_user = Block.objects.filter(blocked=request.user).values_list('blocker_id', flat=True)
+    exclude_ids = set(list(blocked_by_user) + list(blocking_user) + [request.user.id])
+
+    my_profile = request.user.profile
+    my_lat = my_profile.latitude
+    my_lon = my_profile.longitude
+    selected_radius = request.GET.get('radius', '').strip()
+    selected_interest = request.GET.get('interest', '').strip()
+
+    my_interest_ids = set(my_profile.interests.values_list('id', flat=True))
+
+    discover_qs = User.objects.filter(
+        profile__allow_random_chat=True
+    ).exclude(id__in=exclude_ids).select_related('profile').prefetch_related('profile__interests')
+
+    if selected_interest:
+        discover_qs = discover_qs.filter(profile__interests__slug=selected_interest)
+
+    discover_users_list = list(discover_qs.distinct()[:60])
+
+    for u in discover_users_list:
+        user_interests = list(u.profile.interests.all())
+        u.shared_interests = [i for i in user_interests if i.id in my_interest_ids]
+        u.shared_count = len(u.shared_interests)
+        dist = calculate_distance_km(my_lat, my_lon, u.profile.latitude, u.profile.longitude)
+        u.distance_km = dist
+        if dist is not None:
+            u.distance_display = f"~{dist} km"
+        elif u.profile.location_name:
+            u.distance_display = u.profile.location_name
+        else:
+            u.distance_display = ""
+
+    if selected_radius == '5':
+        discover_users_list = [u for u in discover_users_list if u.distance_km is not None and u.distance_km <= 5.0]
+    elif selected_radius == '15':
+        discover_users_list = [u for u in discover_users_list if u.distance_km is not None and u.distance_km <= 15.0]
+    elif selected_radius == '50':
+        discover_users_list = [u for u in discover_users_list if u.distance_km is not None and u.distance_km <= 50.0]
+    elif selected_radius == 'city' and my_profile.location_name:
+        discover_users_list = [u for u in discover_users_list if u.profile.location_name and u.profile.location_name.strip().lower() == my_profile.location_name.strip().lower()]
+
+    discover_users_list.sort(key=lambda u: (
+        u.distance_km if u.distance_km is not None else 9999,
+        -u.shared_count,
+        0 if u.profile.is_currently_online else 1,
+    ))
+
+    all_interests = Interest.objects.all()
+
+    return render(request, 'core/discover.html', {
+        'discover_users': discover_users_list,
         'all_interests': all_interests,
         'selected_interest': selected_interest,
         'selected_radius': selected_radius,

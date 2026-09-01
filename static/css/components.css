@@ -428,3 +428,40 @@
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
+
+/* Discover People Carousel */
+.discover-carousel {
+  display: flex;
+  gap: var(--space-3);
+  overflow-x: auto;
+  padding: 4px 2px var(--space-3);
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+}
+
+.discover-carousel::-webkit-scrollbar {
+  display: none;
+}
+
+.discover-card {
+  flex: 0 0 230px;
+  min-width: 210px;
+  max-width: 250px;
+  scroll-snap-align: start;
+  border-radius: var(--radius-lg);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.discover-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+@media (max-width: 480px) {
+  .discover-card {
+    flex: 0 0 72vw;
+    min-width: 200px;
+    max-width: 260px;
+  }
+}

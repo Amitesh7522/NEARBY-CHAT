@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+{% load i18n static %}
+
+{% block title %}{% trans "Discover People" %} — Nearby Chat{% endblock %}
+
+{% block content %}
+<div style="display: flex; flex-direction: column; gap: var(--space-4);">
+
+  <!-- Top Action & Location Bar -->
+  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-2);">
+    <div>
+      <p style="font-size: var(--text-sm); color: var(--text-muted); margin: 0;">
+        {% trans "Browse active members nearby and find people who share your passions." %}
+      </p>
+    </div>
+    
+    <button type="button" onclick="window.updateUserLocation()" class="btn btn-sm btn-secondary" style="font-size: 11px; padding: 5px 12px; display: inline-flex; align-items: center; gap: 4px;" title="{% trans 'Optional: Used to discover people nearby' %}">
+      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+      {% if user_location_name %}📍 {{ user_location_name }}{% else %}{% trans "Share Location (Optional)" %}{% endif %}
+    </button>
+  </div>
+
+  <!-- Distance & Radius Filter Chips -->
+  <div style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: var(--space-1); scrollbar-width: none;">
+    <a href="{% url 'core:discover' %}{% if selected_interest %}?interest={{ selected_interest }}{% endif %}" 
+       class="badge" 
+       style="padding: 5px 14px; font-size: 11px; text-decoration: none; border-radius: 999px; white-space: nowrap; border: 1px solid {% if not selected_radius %}var(--primary){% else %}var(--border-color){% endif %}; background: {% if not selected_radius %}rgba(99, 102, 241, 0.15){% else %}var(--bg-surface){% endif %}; color: {% if not selected_radius %}var(--primary){% else %}var(--text-secondary){% endif %}; font-weight: 600;">
+      {% trans "📍 Any Distance" %}
+    </a>
+    <a href="{% url 'core:discover' %}?radius=5{% if selected_interest %}&interest={{ selected_interest }}{% endif %}" 
+       class="badge" 
+       style="padding: 5px 14px; font-size: 11px; text-decoration: none; border-radius: 999px; white-space: nowrap; border: 1px solid {% if selected_radius == '5' %}var(--primary){% else %}var(--border-color){% endif %}; background: {% if selected_radius == '5' %}rgba(99, 102, 241, 0.15){% else %}var(--bg-surface){% endif %}; color: {% if selected_radius == '5' %}var(--primary){% else %}var(--text-secondary){% endif %}; font-weight: 600;">
+      {% trans "< 5 km" %}
+    </a>
+    <a href="{% url 'core:discover' %}?radius=15{% if selected_interest %}&interest={{ selected_interest }}{% endif %}" 
+       class="badge" 
+       style="padding: 5px 14px; font-size: 11px; text-decoration: none; border-radius: 999px; white-space: nowrap; border: 1px solid {% if selected_radius == '15' %}var(--primary){% else %}var(--border-color){% endif %}; background: {% if selected_radius == '15' %}rgba(99, 102, 241, 0.15){% else %}var(--bg-surface){% endif %}; color: {% if selected_radius == '15' %}var(--primary){% else %}var(--text-secondary){% endif %}; font-weight: 600;">
+      {% trans "< 15 km" %}
+    </a>
+    <a href="{% url 'core:discover' %}?radius=50{% if selected_interest %}&interest={{ selected_interest }}{% endif %}" 
+       class="badge" 
+       style="padding: 5px 14px; font-size: 11px; text-decoration: none; border-radius: 999px; white-space: nowrap; border: 1px solid {% if selected_radius == '50' %}var(--primary){% else %}var(--border-color){% endif %}; background: {% if selected_radius == '50' %}rgba(99, 102, 241, 0.15){% else %}var(--bg-surface){% endif %}; color: {% if selected_radius == '50' %}var(--primary){% else %}var(--text-secondary){% endif %}; font-weight: 600;">
+      {% trans "< 50 km" %}
+    </a>
+    {% if user_location_name %}
+      <a href="{% url 'core:discover' %}?radius=city{% if selected_interest %}&interest={{ selected_interest }}{% endif %}" 
+         class="badge" 
+         style="padding: 5px 14px; font-size: 11px; text-decoration: none; border-radius: 999px; white-space: nowrap; border: 1px solid {% if selected_radius == 'city' %}var(--primary){% else %}var(--border-color){% endif %}; background: {% if selected_radius == 'city' %}rgba(99, 102, 241, 0.15){% else %}var(--bg-surface){% endif %}; color: {% if selected_radius == 'city' %}var(--primary){% else %}var(--text-secondary){% endif %}; font-weight: 600;">
+        {% trans "Same City" %}
+      </a>
+    {% endif %}
+  </div>
+
+  <!-- Interest Category Filter Chips -->
+  <div style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: var(--space-2); margin-bottom: var(--space-2); scrollbar-width: none;">
+    <a href="{% url 'core:discover' %}{% if selected_radius %}?radius={{ selected_radius }}{% endif %}" 
+       class="badge" 
+       style="padding: 6px 14px; font-size: var(--text-xs); text-decoration: none; border-radius: 999px; white-space: nowrap; border: 1px solid {% if not selected_interest %}var(--primary){% else %}var(--border-color){% endif %}; background: {% if not selected_interest %}var(--primary){% else %}var(--bg-surface){% endif %}; color: {% if not selected_interest %}#FFFFFF{% else %}var(--text-secondary){% endif %}; font-weight: 600;">
+      {% trans "All Interests" %}
+    </a>
+    {% for interest in all_interests %}
+      <a href="{% url 'core:discover' %}?interest={{ interest.slug }}{% if selected_radius %}&radius={{ selected_radius }}{% endif %}" 
+         class="badge" 
+         style="padding: 6px 14px; font-size: var(--text-xs); text-decoration: none; border-radius: 999px; white-space: nowrap; border: 1px solid {% if selected_interest == interest.slug %}var(--primary){% else %}var(--border-color){% endif %}; background: {% if selected_interest == interest.slug %}var(--primary){% else %}var(--bg-surface){% endif %}; color: {% if selected_interest == interest.slug %}#FFFFFF{% else %}var(--text-secondary){% endif %}; display: inline-flex; align-items: center; gap: 4px; font-weight: 600;">
+        <span>{{ interest.emoji }}</span>
+        <span>{{ interest.name }}</span>
+      </a>
+    {% endfor %}
+  </div>
+
+  <!-- People Discovery Grid -->
+  <div class="grid-discovery">
+    {% for u in discover_users %}
+      <div class="card card-clickable" style="padding: var(--space-4); text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: space-between; position: relative;">
+        <div>
+          <div class="avatar-container" style="margin-bottom: var(--space-2);">
+            <img src="{{ u.profile.get_avatar_url }}" alt="{{ u.profile.get_display_name }}" class="avatar avatar-lg">
+            {% if u.profile.show_online_status %}
+              <span class="status-dot {% if u.profile.is_currently_online %}online{% else %}offline{% endif %}"></span>
+            {% endif %}
+          </div>
+
+          <h3 style="font-size: var(--text-sm); margin-bottom: 2px; display: flex; align-items: center; justify-content: center; gap: 4px;">
+            {{ u.profile.get_display_name }}
+            <span onclick="event.stopPropagation(); openBadgeModal('{{ u.profile.badge }}')" style="cursor: pointer; font-size: 11px;" title="{{ u.profile.get_badge_details.name }}">
+              {{ u.profile.get_badge_details.emoji }}
+            </span>
+          </h3>
+
+          {% if u.distance_display %}
+            <p style="font-size: 11px; color: var(--primary); font-weight: 600; margin-bottom: var(--space-2); display: flex; align-items: center; justify-content: center; gap: 2px;">
+              📍 {{ u.distance_display }}
+            </p>
+          {% elif u.profile.location_name %}
+            <p style="font-size: 11px; color: var(--text-muted); margin-bottom: var(--space-2);">📍 {{ u.profile.location_name }}</p>
+          {% endif %}
+
+          <!-- Shared Interest or Top Interests Tag -->
+          <div style="margin-bottom: var(--space-3); display: flex; flex-wrap: wrap; justify-content: center; gap: 4px;">
+            {% if u.shared_interests %}
+              <span class="badge badge-success" style="font-size: 10px; padding: 2px 8px;" title="{% trans 'Shared interests' %}">
+                🎯 {% for si in u.shared_interests|slice:":2" %}{{ si.emoji }} {{ si.name }}{% if not forloop.last %}, {% endif %}{% endfor %}{% if u.shared_interests|length > 2 %} +{{ u.shared_interests|length|add:"-2" }}{% endif %}
+              </span>
+            {% elif u.profile.interests.all %}
+              {% for pi in u.profile.interests.all|slice:":2" %}
+                <span class="badge" style="font-size: 10px; padding: 2px 8px; background: var(--bg-card); border: 1px solid var(--border-color);">
+                  {{ pi.emoji }} {{ pi.name }}
+                </span>
+              {% endfor %}
+            {% endif %}
+          </div>
+        </div>
+
+        <div style="display: flex; gap: var(--space-2); width: 100%; margin-top: var(--space-2);">
+          <a href="{% url 'accounts:user_profile' username=u.username %}" class="btn btn-sm btn-secondary" style="flex: 1;">{% trans "Profile" %}</a>
+          <a href="{% url 'chat:start_direct' username=u.username %}" class="btn btn-sm btn-primary" style="flex: 1;">{% trans "Chat" %}</a>
+        </div>
+      </div>
+    {% empty %}
+      <div class="card" style="grid-column: 1 / -1; text-align: center; padding: var(--space-8);">
+        <p style="color: var(--text-muted); font-size: var(--text-sm);">{% trans "No users found matching your filters right now." %}</p>
+        <a href="{% url 'core:discover' %}" class="btn btn-sm btn-secondary" style="margin-top: var(--space-3);">{% trans "Show All Users" %}</a>
+      </div>
+    {% endfor %}
+  </div>
+
+</div>
+{% endblock %}
