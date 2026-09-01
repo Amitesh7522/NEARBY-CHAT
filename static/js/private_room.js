@@ -253,6 +253,9 @@ class PrivateRoomClient {
     if (data.event === 'deleted') {
       alert("This private room was deleted by its creator.");
       window.location.reload();
+    } else if (data.event === 'blocked') {
+      alert("This private room session has been blocked.");
+      window.location.reload();
     } else if (data.message) {
       const row = document.createElement('div');
       row.className = 'system-message-row';
@@ -280,6 +283,24 @@ class PrivateRoomClient {
   }
 }
 
+function getSupportedAudioMimeType() {
+  if (typeof MediaRecorder === 'undefined') return '';
+  const candidateTypes = [
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/ogg;codecs=opus',
+    'audio/ogg',
+    'audio/mp4',
+    'audio/aac'
+  ];
+  for (const type of candidateTypes) {
+    if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(type)) {
+      return type;
+    }
+  }
+  return '';
+}
+
 // Voice Recording Helper
 function toggleVoiceRecording() {
   const btn = document.getElementById('voice-record-btn');
@@ -294,24 +315,29 @@ function toggleVoiceRecording() {
 
 function startRecording(btn) {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    alert("Voice recording is not supported in this browser.");
+    alert("Voice recording is not supported on this browser/device.");
     return;
   }
 
   navigator.mediaDevices.getUserMedia({ audio: true })
     .then(stream => {
-      const recorder = new MediaRecorder(stream);
+      const mimeType = getSupportedAudioMimeType();
+      const options = mimeType ? { mimeType } : undefined;
+      const recorder = options ? new MediaRecorder(stream, options) : new MediaRecorder(stream);
+
       window.privateRoomClient.mediaRecorder = recorder;
       window.privateRoomClient.audioChunks = [];
       window.privateRoomClient.isRecording = true;
 
       recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) window.privateRoomClient.audioChunks.push(e.data);
+        if (e.data && e.data.size > 0) window.privateRoomClient.audioChunks.push(e.data);
       };
 
       recorder.onstop = () => {
-        const audioBlob = new Blob(window.privateRoomClient.audioChunks, { type: 'audio/webm' });
-        const audioFile = new File([audioBlob], `voice_${Date.now()}.webm`, { type: 'audio/webm' });
+        const actualType = mimeType || 'audio/webm';
+        const ext = actualType.includes('ogg') ? '.ogg' : (actualType.includes('mp4') ? '.mp4' : '.webm');
+        const audioBlob = new Blob(window.privateRoomClient.audioChunks, { type: actualType });
+        const audioFile = new File([audioBlob], `voice_${Date.now()}${ext}`, { type: actualType });
         window.privateRoomClient.uploadFile(audioFile, 'audio');
         stream.getTracks().forEach(track => track.stop());
       };
@@ -322,11 +348,11 @@ function startRecording(btn) {
         btn.style.background = 'rgba(239, 68, 68, 0.15)';
       }
       if (typeof window.showToast === 'function') {
-        window.showToast("Recording audio... Click microphone again to send.", "info");
+        window.showToast("Recording audio... Tap microphone again to send.", "info");
       }
     })
     .catch(err => {
-      alert("Microphone permission required for voice notes.");
+      alert("Microphone permission was denied or is unavailable.");
     });
 }
 

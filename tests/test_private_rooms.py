@@ -1,5 +1,6 @@
 import uuid
 import secrets
+import hashlib
 from datetime import timedelta
 from django.test import TestCase, Client
 from django.contrib.auth import get_user_model
@@ -7,9 +8,10 @@ from django.urls import reverse
 from django.utils import timezone
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.exceptions import ValidationError
+from django.core.cache import cache
 
 from apps.private_rooms.models import PrivateRoom, PrivateRoomParticipant, PrivateRoomMessage
-from apps.private_rooms.services import PrivateRoomService
+from apps.private_rooms.services import PrivateRoomService, hash_token
 from apps.safety.models import Report
 
 User = get_user_model()
@@ -25,13 +27,13 @@ class PrivateRoomModelAndServiceTests(TestCase):
         self.creator.profile.display_name = 'Alice Wonderland'
         self.creator.profile.save()
 
-    def test_create_room_expiry_and_codes(self):
-        session_key = secrets.token_urlsafe(32)
+    def test_create_room_expiry_and_codes_and_token_hashing(self):
+        raw_session_token = secrets.token_urlsafe(32)
         room, participant = PrivateRoomService.create_room(
             creator_user=self.creator,
             duration_choice='1h',
             creator_temp_name='Silver Falcon',
-            session_key=session_key
+            raw_session_token=raw_session_token
         )
         self.assertIsNotNone(room.id)
         self.assertEqual(len(room.join_code), 6)
@@ -43,26 +45,31 @@ class PrivateRoomModelAndServiceTests(TestCase):
         self.assertEqual(participant.temp_name, 'Silver Falcon')
         self.assertTrue(participant.is_creator)
 
+        # 1. Verify token is hashed in database, never raw
+        expected_hash = hashlib.sha256(raw_session_token.encode('utf-8')).hexdigest()
+        self.assertEqual(participant.session_token_hash, expected_hash)
+        self.assertNotEqual(participant.session_token_hash, raw_session_token)
+
     def test_random_temp_name_generation(self):
         name = PrivateRoomService.generate_random_temp_name()
         self.assertIsInstance(name, str)
         self.assertGreater(len(name.split()), 1)
 
-    def test_atomic_capacity_limit_enforced(self):
+    def test_atomic_capacity_limit_enforced_and_reentry(self):
         # 1. Creator creates room
-        session_creator = secrets.token_urlsafe(32)
+        raw_creator_token = secrets.token_urlsafe(32)
         room, p1 = PrivateRoomService.create_room(
             creator_user=self.creator,
             duration_choice='24h',
             creator_temp_name='Purple Owl',
-            session_key=session_creator
+            raw_session_token=raw_creator_token
         )
 
         # 2. Guest 1 joins -> 2 participants -> Room full
-        session_guest1 = secrets.token_urlsafe(32)
+        raw_guest1_token = secrets.token_urlsafe(32)
         p2, status = PrivateRoomService.join_room_atomic(
             room_id_or_token=room.id,
-            session_key=session_guest1,
+            raw_session_token=raw_guest1_token,
             temp_name='Amber Lynx'
         )
         self.assertEqual(status, 'joined')
@@ -72,22 +79,31 @@ class PrivateRoomModelAndServiceTests(TestCase):
         self.assertTrue(room.is_full)
         self.assertFalse(room.can_join)
 
-        # 3. Guest 2 attempts to join -> Rejected as full
-        session_guest2 = secrets.token_urlsafe(32)
+        # 3. Existing Guest 1 re-enters / reconnects -> Returns 'existing' seamlessly
+        p2_reenter, status_reenter = PrivateRoomService.join_room_atomic(
+            room_id_or_token=room.id,
+            raw_session_token=raw_guest1_token,
+            temp_name='Amber Lynx'
+        )
+        self.assertEqual(status_reenter, 'existing')
+        self.assertEqual(p2_reenter.id, p2.id)
+
+        # 4. Guest 2 attempts to join -> Rejected as full
+        raw_guest2_token = secrets.token_urlsafe(32)
         p3, status_rejected = PrivateRoomService.join_room_atomic(
             room_id_or_token=room.id,
-            session_key=session_guest2,
+            raw_session_token=raw_guest2_token,
             temp_name='Blue Panda'
         )
         self.assertEqual(status_rejected, 'full')
 
     def test_expired_room_rejection(self):
-        session_key = secrets.token_urlsafe(32)
+        raw_token = secrets.token_urlsafe(32)
         room, _ = PrivateRoomService.create_room(
             creator_user=self.creator,
             duration_choice='1h',
             creator_temp_name='Cosmic Badger',
-            session_key=session_key
+            raw_session_token=raw_token
         )
         # Fast-forward expiry
         room.expires_at = timezone.now() - timedelta(minutes=5)
@@ -96,26 +112,26 @@ class PrivateRoomModelAndServiceTests(TestCase):
         self.assertTrue(room.is_expired)
         self.assertFalse(room.can_join)
 
-        session_guest = secrets.token_urlsafe(32)
+        raw_guest_token = secrets.token_urlsafe(32)
         res, status = PrivateRoomService.join_room_atomic(
             room_id_or_token=room.id,
-            session_key=session_guest,
+            raw_session_token=raw_guest_token,
             temp_name='Solar Dolphin'
         )
         self.assertEqual(status, 'expired')
 
     def test_room_deletion_by_creator_only(self):
-        session_creator = secrets.token_urlsafe(32)
+        raw_creator_token = secrets.token_urlsafe(32)
         room, p1 = PrivateRoomService.create_room(
             creator_user=self.creator,
             duration_choice='24h',
             creator_temp_name='Velvet Fox',
-            session_key=session_creator
+            raw_session_token=raw_creator_token
         )
-        session_guest = secrets.token_urlsafe(32)
+        raw_guest_token = secrets.token_urlsafe(32)
         p2, _ = PrivateRoomService.join_room_atomic(
             room_id_or_token=room.id,
-            session_key=session_guest,
+            raw_session_token=raw_guest_token,
             temp_name='Golden Hawk'
         )
 
@@ -128,6 +144,29 @@ class PrivateRoomModelAndServiceTests(TestCase):
         room.refresh_from_db()
         self.assertTrue(room.is_deleted)
 
+    def test_v1_block_behavior(self):
+        raw_creator_token = secrets.token_urlsafe(32)
+        room, p1 = PrivateRoomService.create_room(
+            creator_user=self.creator,
+            duration_choice='24h',
+            creator_temp_name='Velvet Fox',
+            raw_session_token=raw_creator_token
+        )
+        raw_guest_token = secrets.token_urlsafe(32)
+        p2, _ = PrivateRoomService.join_room_atomic(
+            room_id_or_token=room.id,
+            raw_session_token=raw_guest_token,
+            temp_name='Golden Hawk'
+        )
+
+        # Block room
+        PrivateRoomService.block_room(room, p1)
+        room.refresh_from_db()
+        p1.refresh_from_db()
+        self.assertTrue(room.is_blocked)
+        self.assertTrue(p1.is_blocked)
+        self.assertFalse(room.can_join)
+
 
 class PrivateRoomSecurityAndUploadTests(TestCase):
     def setUp(self):
@@ -138,12 +177,12 @@ class PrivateRoomSecurityAndUploadTests(TestCase):
         )
         self.creator.profile.display_name = 'Alice Secret'
         self.creator.profile.save()
-        self.session_key = secrets.token_urlsafe(32)
+        self.raw_session_token = secrets.token_urlsafe(32)
         self.room, self.p1 = PrivateRoomService.create_room(
             creator_user=self.creator,
             duration_choice='24h',
             creator_temp_name='Quiet Otter',
-            session_key=self.session_key
+            raw_session_token=self.raw_session_token
         )
 
     def test_valid_image_upload(self):
@@ -189,6 +228,7 @@ class PrivateRoomSecurityAndUploadTests(TestCase):
 
 class PrivateRoomViewsHTTPTests(TestCase):
     def setUp(self):
+        cache.clear()
         self.client = Client()
         self.user = User.objects.create_user(
             username='bob_view',
@@ -224,12 +264,12 @@ class PrivateRoomViewsHTTPTests(TestCase):
 
     def test_guest_join_by_invite_url(self):
         # Creator creates room
-        session_creator = secrets.token_urlsafe(32)
+        raw_creator_token = secrets.token_urlsafe(32)
         room, _ = PrivateRoomService.create_room(
             creator_user=self.user,
             duration_choice='24h',
             creator_temp_name='Sage Koala',
-            session_key=session_creator
+            raw_session_token=raw_creator_token
         )
 
         # Unauthenticated guest opens invite page
@@ -252,12 +292,12 @@ class PrivateRoomViewsHTTPTests(TestCase):
         self.assertNotContains(chat_resp, self.user.profile.get_display_name())
 
     def test_guest_join_by_join_code(self):
-        session_creator = secrets.token_urlsafe(32)
+        raw_creator_token = secrets.token_urlsafe(32)
         room, _ = PrivateRoomService.create_room(
             creator_user=self.user,
             duration_choice='24h',
             creator_temp_name='Ocean Wolf',
-            session_key=session_creator
+            raw_session_token=raw_creator_token
         )
 
         guest_client = Client()
@@ -271,14 +311,30 @@ class PrivateRoomViewsHTTPTests(TestCase):
         self.assertEqual(chat_resp.status_code, 200)
         self.assertContains(chat_resp, 'Frost Bear')
 
+    def test_join_code_rate_limiting(self):
+        guest_client = Client()
+        for i in range(6):
+            guest_client.post(reverse('private_rooms:join_code'), {
+                'join_code': f'FAKE{i}',
+                'temp_name': 'Tester'
+            })
+        
+        # 7th request should trigger rate limit warning
+        rate_limited_resp = guest_client.post(reverse('private_rooms:join_code'), {
+            'join_code': 'FAKE99',
+            'temp_name': 'Tester'
+        })
+        self.assertEqual(rate_limited_resp.status_code, 200)
+        self.assertContains(rate_limited_resp, "Too many attempts")
+
     def test_unauthorized_media_access_forbidden(self):
         # Setup room with creator and uploaded photo
-        session_creator = secrets.token_urlsafe(32)
+        raw_creator_token = secrets.token_urlsafe(32)
         room, p1 = PrivateRoomService.create_room(
             creator_user=self.user,
             duration_choice='24h',
             creator_temp_name='Astral Eagle',
-            session_key=session_creator
+            raw_session_token=raw_creator_token
         )
         fake_img = SimpleUploadedFile("secret_photo.png", b"secret png binary", content_type="image/png")
         msg = PrivateRoomService.validate_and_save_upload(

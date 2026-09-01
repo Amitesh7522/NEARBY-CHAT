@@ -35,8 +35,12 @@
       </div>
     </div>
 
-    <!-- Right Header Actions (Report, Leave, Delete) -->
+    <!-- Right Header Actions (Block, Report, Leave, Delete) -->
     <div style="display: flex; align-items: center; gap: var(--space-1);">
+      <button type="button" onclick="openBlockModal()" class="btn-icon" title="{% trans 'Block Participant' %}" aria-label="{% trans 'Block' %}" style="color: var(--text-muted);">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
+      </button>
+
       <button type="button" onclick="openReportModal()" class="btn-icon" title="{% trans 'Report Room' %}" aria-label="{% trans 'Report' %}">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
       </button>
@@ -195,6 +199,25 @@
   </div>
 {% endif %}
 
+<!-- Block Modal -->
+<div id="block-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: var(--space-4);">
+  <div class="card" style="max-width: 380px; width: 100%; padding: var(--space-5); text-align: center;">
+    <h3 style="color: var(--error); margin-bottom: var(--space-2);">{% trans "Block Participant?" %}</h3>
+    <p style="font-size: var(--text-xs); color: var(--text-muted); margin-bottom: var(--space-4);">
+      {% trans "This will immediately end this private chat session. Neither of your real identities will be revealed." %}
+    </p>
+    <div style="display: flex; gap: var(--space-2); justify-content: center;">
+      <button type="button" onclick="closeBlockModal()" class="btn btn-secondary btn-sm">{% trans "Cancel" %}</button>
+      <form method="post" action="{% url 'private_rooms:block_room' room_id=room.id %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-sm" style="background: var(--error); color: white; border: none; font-weight: 700;">
+          {% trans "Block & End" %}
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
 <!-- Report Modal -->
 <div id="report-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: var(--space-4);">
   <div class="card" style="max-width: 400px; width: 100%; padding: var(--space-5);">
@@ -230,7 +253,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/private_room.js' %}?v=1.0"></script>
+<script src="{% static 'js/private_room.js' %}?v=1.1"></script>
 <script>
   document.addEventListener('DOMContentLoaded', () => {
     window.privateRoomClient = new PrivateRoomClient({
@@ -250,6 +273,15 @@
   }
   function closeLeaveModal() {
     const m = document.getElementById('leave-modal');
+    if (m) m.style.display = 'none';
+  }
+
+  function openBlockModal() {
+    const m = document.getElementById('block-modal');
+    if (m) m.style.display = 'flex';
+  }
+  function closeBlockModal() {
+    const m = document.getElementById('block-modal');
     if (m) m.style.display = 'none';
   }
 

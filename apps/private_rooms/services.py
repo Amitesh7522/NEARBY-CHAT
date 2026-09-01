@@ -6,6 +6,7 @@ import os
 import re
 import uuid
 import secrets
+import hashlib
 import mimetypes
 from datetime import timedelta
 from django.db import transaction
@@ -15,6 +16,15 @@ from django.core.files.base import ContentFile
 from django.core.exceptions import ValidationError
 
 from .models import PrivateRoom, PrivateRoomParticipant, PrivateRoomMessage
+
+
+def hash_token(raw_token):
+    """
+    Computes SHA-256 hash of a raw authentication token for secure database storage.
+    """
+    if not raw_token or not isinstance(raw_token, str):
+        return ""
+    return hashlib.sha256(raw_token.strip().encode('utf-8')).hexdigest()
 
 
 ADJECTIVES = [
@@ -57,6 +67,10 @@ DISALLOWED_EXTENSIONS = {
 
 class PrivateRoomService:
     @staticmethod
+    def hash_token(raw_token):
+        return hash_token(raw_token)
+
+    @staticmethod
     def generate_random_temp_name():
         adj = secrets.choice(ADJECTIVES)
         animal = secrets.choice(ANIMALS)
@@ -78,9 +92,10 @@ class PrivateRoomService:
         return clean[:40]
 
     @classmethod
-    def create_room(cls, creator_user, duration_choice, creator_temp_name, session_key):
+    def create_room(cls, creator_user, duration_choice, creator_temp_name, raw_session_token):
         """
         Creates a new PrivateRoom and registers the creator participant.
+        Never stores the raw session token in the database.
         """
         now = timezone.now()
         if duration_choice == '1h':
@@ -91,17 +106,18 @@ class PrivateRoomService:
             duration_choice = '24h'
             expires_at = now + timedelta(hours=24)
 
-        # Generate unique token and join code
+        # Generate unique token and join code (checking active rooms)
         secure_token = PrivateRoom.generate_secure_token()
         while PrivateRoom.objects.filter(secure_token=secure_token).exists():
             secure_token = PrivateRoom.generate_secure_token()
 
         join_code = PrivateRoom.generate_join_code()
-        while PrivateRoom.objects.filter(join_code=join_code).exists():
+        while PrivateRoom.objects.filter(join_code=join_code, is_deleted=False, expires_at__gt=now).exists():
             join_code = PrivateRoom.generate_join_code()
 
         temp_name = cls.sanitize_temp_name(creator_temp_name)
         avatar_color = cls.get_random_avatar_color()
+        token_hash = hash_token(raw_session_token)
 
         with transaction.atomic():
             room = PrivateRoom.objects.create(
@@ -117,7 +133,7 @@ class PrivateRoomService:
 
             participant = PrivateRoomParticipant.objects.create(
                 room=room,
-                session_key=session_key,
+                session_token_hash=token_hash,
                 user=creator_user if (creator_user and creator_user.is_authenticated) else None,
                 is_creator=True,
                 temp_name=temp_name,
@@ -134,11 +150,14 @@ class PrivateRoomService:
         return room, participant
 
     @classmethod
-    def join_room_atomic(cls, room_id_or_token, session_key, temp_name, user=None):
+    def join_room_atomic(cls, room_id_or_token, raw_session_token, temp_name, user=None):
         """
         Atomically attempts to join a private room.
         Guarantees strict 1-to-1 capacity limit (max 2 participants).
+        Enables seamless re-entry for existing participants while permanently blocking new third parties.
         """
+        token_hash = hash_token(raw_session_token)
+
         with transaction.atomic():
             # Query with row lock
             if isinstance(room_id_or_token, uuid.UUID) or (isinstance(room_id_or_token, str) and len(room_id_or_token) == 36):
@@ -156,22 +175,25 @@ class PrivateRoomService:
             if room.is_expired:
                 return room, 'expired'
 
-            # Check if this session is already a participant
+            if room.is_blocked:
+                return room, 'blocked'
+
+            # Check if this session is already an existing participant (re-entry)
             existing_participant = PrivateRoomParticipant.objects.filter(
                 room=room,
-                session_key=session_key
+                session_token_hash=token_hash
             ).first()
 
             if existing_participant:
-                # Update last seen
+                # Update last seen and active state
                 existing_participant.last_seen_at = timezone.now()
                 existing_participant.is_active = True
                 existing_participant.save(update_fields=['last_seen_at', 'is_active'])
                 return existing_participant, 'existing'
 
-            # Count active participants
-            active_count = PrivateRoomParticipant.objects.filter(room=room, is_active=True).count()
-            if active_count >= room.max_participants:
+            # Count total participants (active or registered in room)
+            current_count = PrivateRoomParticipant.objects.filter(room=room).count()
+            if current_count >= room.max_participants:
                 room.is_full = True
                 room.save(update_fields=['is_full'])
                 return room, 'full'
@@ -185,15 +207,15 @@ class PrivateRoomService:
 
             participant = PrivateRoomParticipant.objects.create(
                 room=room,
-                session_key=session_key,
+                session_token_hash=token_hash,
                 user=user if (user and user.is_authenticated) else None,
                 is_creator=False,
                 temp_name=clean_name,
                 temp_avatar_color=avatar_color
             )
 
-            # Update room full status
-            if active_count + 1 >= room.max_participants:
+            # Update room full status if 2 participants reached
+            if current_count + 1 >= room.max_participants:
                 room.is_full = True
                 room.save(update_fields=['is_full'])
 
@@ -207,11 +229,29 @@ class PrivateRoomService:
             return participant, 'joined'
 
     @classmethod
+    def block_room(cls, room, participant):
+        """
+        V1 Block Behavior: Blocks room interaction, immediately terminating further messages.
+        """
+        with transaction.atomic():
+            room.is_blocked = True
+            room.save(update_fields=['is_blocked'])
+            participant.is_blocked = True
+            participant.save(update_fields=['is_blocked'])
+
+            PrivateRoomMessage.objects.create(
+                room=room,
+                content="🚫 This private room session has been blocked.",
+                message_type='system'
+            )
+        return True
+
+    @classmethod
     def validate_and_save_upload(cls, room, participant, file_obj, message_type):
         """
         Validates uploaded media or file with strict server-side rules and saves message.
         """
-        if room.is_expired or room.is_deleted:
+        if room.is_expired or room.is_deleted or room.is_blocked:
             raise ValidationError("This private room is no longer active.")
 
         if not file_obj:

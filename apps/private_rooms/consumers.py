@@ -1,13 +1,17 @@
 """
 Django Channels WebSocket Consumer for Private 1-to-1 Rooms.
-Ensures zero identity leakage, authenticates via session keys, and manages real-time messaging.
+Ensures zero identity leakage, authenticates via hashed session credentials,
+validates Origin against CSWSH, and manages real-time messaging.
 """
 import logging
+from urllib.parse import urlparse
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from channels.db import database_sync_to_async
+from django.conf import settings
 from django.utils import timezone
 
 from .models import PrivateRoom, PrivateRoomParticipant, PrivateRoomMessage
+from .services import hash_token
 
 logger = logging.getLogger(__name__)
 
@@ -17,21 +21,23 @@ class PrivateRoomConsumer(AsyncJsonWebsocketConsumer):
         self.room_id = self.scope['url_route']['kwargs']['room_id']
         self.room_group_name = f"private_room_{self.room_id}"
 
+        # 1. Validate Origin against CSWSH (Cross-Site WebSocket Hijacking)
+        if not await self._validate_origin():
+            logger.warning(f"PrivateRoomConsumer connection rejected: Invalid or unauthorized Origin header")
+            await self.close(code=4003)
+            return
+
         session = self.scope.get('session', {})
-        session_key = session.get(f"private_room_session_{self.room_id}")
+        raw_session_token = session.get(f"pr_auth_{self.room_id}") or session.get(f"private_room_session_{self.room_id}") or session.get("private_session_key")
 
-        # If not in session by room_id, check general private_session_key
-        if not session_key:
-            session_key = session.get("private_session_key")
-
-        # Authenticate participant
-        self.participant = await self._get_participant(session_key)
+        # 2. Authenticate participant using hashed token
+        self.participant = await self._get_participant(raw_session_token)
         if not self.participant:
             logger.warning(f"PrivateRoomConsumer connection rejected: Invalid participant for room {self.room_id}")
             await self.close(code=4003)
             return
 
-        # Check room status
+        # 3. Check room status (not expired, deleted, or blocked)
         room_valid = await self._is_room_valid()
         if not room_valid:
             await self.close(code=4004)
@@ -145,22 +151,43 @@ class PrivateRoomConsumer(AsyncJsonWebsocketConsumer):
             'message': event.get('message', ''),
         })
 
+    async def _validate_origin(self):
+        """
+        Validates the Origin header to prevent CSWSH attacks.
+        """
+        headers = dict(self.scope.get('headers', []))
+        origin_bytes = headers.get(b'origin')
+        if not origin_bytes:
+            # Direct/same-origin WebSocket or non-browser client
+            return True
+        origin = origin_bytes.decode('utf-8', errors='ignore')
+        parsed = urlparse(origin)
+        origin_host = parsed.hostname or parsed.netloc.split(':')[0]
+        
+        # Check against ALLOWED_HOSTS
+        allowed = settings.ALLOWED_HOSTS
+        if '*' in allowed or origin_host in allowed or 'localhost' in allowed or '127.0.0.1' in allowed:
+            return True
+        return False
+
     # Database Helpers
     @database_sync_to_async
-    def _get_participant(self, session_key):
-        if not session_key:
+    def _get_participant(self, raw_session_token):
+        if not raw_session_token:
             return None
+        token_hash = hash_token(raw_session_token)
         return PrivateRoomParticipant.objects.filter(
             room_id=self.room_id,
-            session_key=session_key,
-            is_active=True
+            session_token_hash=token_hash,
+            is_active=True,
+            is_blocked=False
         ).first()
 
     @database_sync_to_async
     def _is_room_valid(self):
         try:
             room = PrivateRoom.objects.get(id=self.room_id)
-            return not room.is_deleted and not room.is_expired
+            return not room.is_deleted and not room.is_expired and not room.is_blocked
         except PrivateRoom.DoesNotExist:
             return False
 

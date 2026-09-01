@@ -40,6 +40,7 @@ class PrivateRoom(models.Model):
     is_full = models.BooleanField(default=False)
     max_participants = models.PositiveSmallIntegerField(default=2)
     
+    is_blocked = models.BooleanField(default=False, db_index=True)
     is_deleted = models.BooleanField(default=False, db_index=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
     
@@ -60,7 +61,7 @@ class PrivateRoom(models.Model):
 
     @property
     def can_join(self):
-        return not self.is_deleted and not self.is_expired and not self.is_full
+        return not self.is_deleted and not self.is_expired and not self.is_full and not self.is_blocked
 
     def time_remaining_seconds(self):
         now = timezone.now()
@@ -95,11 +96,12 @@ class PrivateRoom(models.Model):
 class PrivateRoomParticipant(models.Model):
     """
     Participant in a private room.
-    Scoped by a unique session secret key to ensure anonymous guest access without account creation.
+    Scoped by a cryptographic SHA-256 hash of the session secret token.
+    Never stores raw credentials in plaintext in the database.
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     room = models.ForeignKey(PrivateRoom, on_delete=models.CASCADE, related_name='participants')
-    session_key = models.CharField(max_length=64, db_index=True)
+    session_token_hash = models.CharField(max_length=64, db_index=True)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -119,9 +121,9 @@ class PrivateRoomParticipant(models.Model):
     class Meta:
         verbose_name = _('Private Room Participant')
         verbose_name_plural = _('Private Room Participants')
-        unique_together = ('room', 'session_key')
+        unique_together = ('room', 'session_token_hash')
         indexes = [
-            models.Index(fields=['room', 'session_key']),
+            models.Index(fields=['room', 'session_token_hash']),
         ]
 
     def __str__(self):

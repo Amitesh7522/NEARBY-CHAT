@@ -14,6 +14,7 @@ urlpatterns = [
     path('room/<uuid:room_id>/upload/', views.upload_media_view, name='upload_media'),
     path('room/<uuid:room_id>/delete/', views.delete_room_view, name='delete_room'),
     path('room/<uuid:room_id>/leave/', views.leave_room_view, name='leave_room'),
+    path('room/<uuid:room_id>/block/', views.block_room_view, name='block_room'),
     path('room/<uuid:room_id>/report/', views.report_room_view, name='report_room'),
     path('media/<uuid:message_id>/', views.serve_media_view, name='serve_media'),
 ]
