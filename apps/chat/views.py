@@ -174,7 +174,7 @@ def quick_connect_view(request):
 
         return redirect('chat:detail', conversation_id=conversation.id)
     else:
-        messages.info(request, _("You've connected with everyone available right now! Check back soon or explore Community Rooms."))
+        messages.info(request, _("You've connected with everyone available right now! Check back soon or explore Rooms."))
         return redirect('chat:list')
 
 

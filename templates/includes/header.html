@@ -19,7 +19,7 @@
     {% elif request.resolver_match.view_name == 'chat:list' or 'chat' in request.resolver_match.app_name %}
       <h1 class="header-page-title">{% trans "Messages" %}</h1>
     {% elif request.resolver_match.view_name == 'rooms:list' or 'rooms' in request.resolver_match.app_name %}
-      <h1 class="header-page-title">{% trans "Community Rooms" %}</h1>
+      <h1 class="header-page-title">{% trans "Rooms" %}</h1>
     {% elif request.resolver_match.view_name == 'accounts:profile' or request.resolver_match.view_name == 'accounts:user_profile' %}
       <h1 class="header-page-title">{% trans "Profile" %}</h1>
     {% elif request.resolver_match.view_name == 'accounts:onboarding' %}
