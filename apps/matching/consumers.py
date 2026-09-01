@@ -10,6 +10,12 @@ logger = logging.getLogger(__name__)
 
 class MatchingConsumer(AsyncJsonWebsocketConsumer):
     async def connect(self):
+        from apps.core.security import validate_websocket_origin
+        if not validate_websocket_origin(self.scope):
+            logger.warning("MatchingConsumer connection rejected: Invalid or unauthorized Origin header")
+            await self.close(code=4003)
+            return
+
         self.user = self.scope.get('user')
         if not self.user or not self.user.is_authenticated:
             await self.close(code=4001)

@@ -144,6 +144,13 @@ class OnboardingProfileForm(forms.ModelForm):
             'avatar_preset': forms.HiddenInput(),
         }
 
+    def clean_avatar(self):
+        avatar = self.cleaned_data.get('avatar')
+        if avatar and hasattr(avatar, 'file') and not isinstance(avatar, str):
+            from apps.core.security import sanitize_and_strip_image_exif
+            return sanitize_and_strip_image_exif(avatar, max_dimension=1000, max_size_bytes=5 * 1024 * 1024)
+        return avatar
+
     def clean_interests(self):
         interests = self.cleaned_data.get('interests')
         if not interests or len(interests) < 3:
@@ -206,6 +213,13 @@ class ProfileEditForm(forms.ModelForm):
             'show_online_status': forms.CheckboxInput(attrs={'class': 'checkbox-field'}),
             'allow_random_chat': forms.CheckboxInput(attrs={'class': 'checkbox-field'}),
         }
+
+    def clean_avatar(self):
+        avatar = self.cleaned_data.get('avatar')
+        if avatar and hasattr(avatar, 'file') and not isinstance(avatar, str):
+            from apps.core.security import sanitize_and_strip_image_exif
+            return sanitize_and_strip_image_exif(avatar, max_dimension=1000, max_size_bytes=5 * 1024 * 1024)
+        return avatar
 
     def clean_interests(self):
         interests = self.cleaned_data.get('interests')

@@ -14,6 +14,12 @@ logger = logging.getLogger(__name__)
 
 class ChatConsumer(AsyncJsonWebsocketConsumer):
     async def connect(self):
+        from apps.core.security import validate_websocket_origin
+        if not validate_websocket_origin(self.scope):
+            logger.warning("ChatConsumer connection rejected: Invalid or unauthorized Origin header")
+            await self.close(code=4003)
+            return
+
         self.user = self.scope.get('user')
         self.conversation_id = self.scope['url_route']['kwargs']['conversation_id']
         self.room_group_name = f"chat_{self.conversation_id}"
@@ -69,6 +75,10 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             text = content.get('content', '').strip()
             client_msg_id = content.get('client_msg_id', '')
             if not text:
+                return
+
+            if len(text) > 5000:
+                await self.send_json({'type': 'error', 'message': 'Message exceeds maximum allowed length (5000 characters).'})
                 return
 
             try:

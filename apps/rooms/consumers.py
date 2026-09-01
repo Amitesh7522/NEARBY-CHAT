@@ -11,6 +11,12 @@ logger = logging.getLogger(__name__)
 
 class RoomConsumer(AsyncJsonWebsocketConsumer):
     async def connect(self):
+        from apps.core.security import validate_websocket_origin
+        if not validate_websocket_origin(self.scope):
+            logger.warning("RoomConsumer connection rejected: Invalid or unauthorized Origin header")
+            await self.close(code=4003)
+            return
+
         self.user = self.scope.get('user')
         self.room_id = self.scope['url_route']['kwargs']['room_id']
         self.room_group_name = f"room_{self.room_id}"
@@ -48,6 +54,10 @@ class RoomConsumer(AsyncJsonWebsocketConsumer):
             text = content.get('content', '').strip()
             client_msg_id = content.get('client_msg_id', '')
             if not text:
+                return
+
+            if len(text) > 5000:
+                await self.send_json({'type': 'error', 'message': 'Message exceeds maximum allowed length (5000 characters).'})
                 return
 
             try:
