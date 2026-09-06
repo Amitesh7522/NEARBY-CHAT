@@ -318,7 +318,7 @@ class OTPVerification(models.Model):
         verbose_name = _('OTP Verification')
         verbose_name_plural = _('OTP Verifications')
         indexes = [
-            models.Index(fields=['identifier', 'purpose', 'is_used']),
+            models.Index(fields=['identifier', 'purpose', 'is_used', '-created_at']),
             models.Index(fields=['identifier', 'created_at']),
         ]
 

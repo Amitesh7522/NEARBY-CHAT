@@ -347,13 +347,25 @@ def room_chat_view(request, room_id):
     # Query other participant if present (strictly anonymous representation)
     other_participant = room.participants.filter(is_active=True).exclude(id=participant.id).first()
 
+    # Determine initial E2EE session state
+    if other_participant and participant.public_key and other_participant.public_key:
+        session_state = 'E2EE_ESTABLISHED'
+    elif other_participant:
+        session_state = 'KEY_EXCHANGE'
+    else:
+        session_state = 'WAITING_FOR_PEER'
+
     # Load initial messages
     initial_messages = room.messages.select_related('sender').order_by('created_at')[:50]
 
     return render(request, 'private_rooms/chat.html', {
         'room': room,
         'current_participant': participant,
+        'current_participant_role': 'creator' if participant.is_creator else 'guest',
         'other_participant': other_participant,
+        'my_public_key': participant.public_key,
+        'peer_public_key': other_participant.public_key if other_participant else '',
+        'session_state': session_state,
         'initial_messages': initial_messages,
         'time_remaining_seconds': room.time_remaining_seconds(),
         'time_remaining_display': room.time_remaining_display(),
@@ -365,6 +377,7 @@ def room_chat_view(request, room_id):
 def upload_media_view(request, room_id):
     """
     Secure media and file upload endpoint for Private Rooms.
+    Supports client-side E2EE encrypted uploads.
     """
     if is_rate_limited(request, action=f'upload_{room_id}', limit=30, window=60):
         return JsonResponse({'success': False, 'error': 'Upload rate limit exceeded. Please wait a moment.'}, status=429)
@@ -379,13 +392,19 @@ def upload_media_view(request, room_id):
 
     file_obj = request.FILES.get('file')
     message_type = request.POST.get('message_type', 'file')
+    client_msg_id = request.POST.get('client_msg_id', '').strip()
+    encrypted_file_key = request.POST.get('encrypted_file_key', '').strip()
+    file_iv = request.POST.get('file_iv', '').strip()
 
     try:
         msg = PrivateRoomService.validate_and_save_upload(
             room=room,
             participant=participant,
             file_obj=file_obj,
-            message_type=message_type
+            message_type=message_type,
+            client_msg_id=client_msg_id,
+            encrypted_file_key=encrypted_file_key,
+            file_iv=file_iv
         )
 
         media_url = reverse('private_rooms:serve_media', kwargs={'message_id': msg.id})
@@ -398,7 +417,9 @@ def upload_media_view(request, room_id):
                 {
                     'type': 'private_message_event',
                     'message_id': str(msg.id),
+                    'client_msg_id': msg.client_msg_id,
                     'sender_id': str(participant.id),
+                    'sender_role': 'creator' if participant.is_creator else 'guest',
                     'sender_temp_name': participant.temp_name,
                     'sender_avatar_color': participant.temp_avatar_color,
                     'sender_initials': participant.get_initials(),
@@ -408,6 +429,8 @@ def upload_media_view(request, room_id):
                     'file_url': media_url,
                     'file_name': msg.file_name,
                     'file_size': msg.file_size,
+                    'encrypted_file_key': msg.encrypted_file_key,
+                    'file_iv': msg.file_iv,
                     'created_at': msg.created_at.strftime('%H:%M'),
                 }
             )
@@ -415,10 +438,13 @@ def upload_media_view(request, room_id):
         return JsonResponse({
             'success': True,
             'message_id': str(msg.id),
+            'client_msg_id': msg.client_msg_id,
             'file_url': media_url,
             'file_name': msg.file_name,
             'file_size': msg.file_size,
             'message_type': msg.message_type,
+            'encrypted_file_key': msg.encrypted_file_key,
+            'file_iv': msg.file_iv,
             'created_at': msg.created_at.strftime('%H:%M'),
         })
     except Exception as e:
@@ -429,6 +455,7 @@ def serve_media_view(request, message_id):
     """
     Streams private media only to verified room participants.
     Validates hashed session credentials against active room participants.
+    Includes E2EE key wrapping headers.
     """
     msg = get_object_or_404(PrivateRoomMessage, id=message_id)
     room = msg.room
@@ -445,9 +472,12 @@ def serve_media_view(request, message_id):
 
     try:
         response = FileResponse(msg.file.open('rb'), content_type=msg.file_mime_type or 'application/octet-stream')
-        # If document, trigger download with safe original name
-        if msg.message_type == 'file':
+        if msg.message_type == 'file' and not msg.encrypted_file_key:
             response['Content-Disposition'] = f'attachment; filename="{msg.file_name}"'
+        if msg.encrypted_file_key:
+            response['X-Encrypted-File-Key'] = msg.encrypted_file_key
+            response['X-File-IV'] = msg.file_iv
+            response['Access-Control-Expose-Headers'] = 'X-Encrypted-File-Key, X-File-IV'
         return response
     except FileNotFoundError:
         raise Http404(_('File not found on server.'))
@@ -559,11 +589,16 @@ def report_room_view(request, room_id):
     room = get_object_or_404(PrivateRoom, id=room_id)
     reason = request.POST.get('reason', 'other')
     details = request.POST.get('details', '').strip()
+    plaintext_evidence = request.POST.get('plaintext_evidence', '').strip()
+
+    full_details = f"[Private Room {room.id} - JoinCode {room.join_code}] {details}"
+    if plaintext_evidence:
+        full_details += f"\n\n--- User-Consented Plaintext Evidence ---\n{plaintext_evidence[:2000]}"
 
     Report.objects.create(
         reporter=request.user if request.user.is_authenticated else None,
         reason=reason,
-        details=f"[Private Room {room.id} - JoinCode {room.join_code}] {details}"
+        details=full_details
     )
 
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':

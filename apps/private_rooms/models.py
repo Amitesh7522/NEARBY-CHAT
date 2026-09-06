@@ -51,6 +51,9 @@ class PrivateRoom(models.Model):
         verbose_name = _('Private Room')
         verbose_name_plural = _('Private Rooms')
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['is_deleted', 'expires_at']),
+        ]
 
     def __str__(self):
         return f"Private Room {self.id} ({self.join_code})"
@@ -112,6 +115,7 @@ class PrivateRoomParticipant(models.Model):
     is_creator = models.BooleanField(default=False)
     temp_name = models.CharField(max_length=50)
     temp_avatar_color = models.CharField(max_length=20, default='#06b6d4')
+    public_key = models.TextField(blank=True, default='')  # Base64-encoded ECDH P-256 public key
     
     joined_at = models.DateTimeField(auto_now_add=True)
     last_seen_at = models.DateTimeField(auto_now=True)
@@ -143,6 +147,8 @@ class PrivateRoomParticipant(models.Model):
 class PrivateRoomMessage(models.Model):
     """
     Encapsulates text, image, audio, or document messages inside a Private Room.
+    In E2EE mode, content stores the ciphertext JSON envelope, and encrypted files
+    carry encrypted_file_key and file_iv.
     """
     MESSAGE_TYPES = [
         ('text', _('Text')),
@@ -169,6 +175,8 @@ class PrivateRoomMessage(models.Model):
     file_name = models.CharField(max_length=255, blank=True)
     file_size = models.PositiveIntegerField(default=0)
     file_mime_type = models.CharField(max_length=100, blank=True)
+    encrypted_file_key = models.TextField(blank=True, default='')  # Encrypted under E2EE session key
+    file_iv = models.CharField(max_length=64, blank=True, default='')  # IV used for file ciphertext
     
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     is_deleted = models.BooleanField(default=False)

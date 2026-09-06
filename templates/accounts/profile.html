@@ -148,7 +148,7 @@
 
 <script>
   function shareProfile(username) {
-    const profileUrl = window.location.origin + '/accounts/user/' + username + '/';
+    const profileUrl = window.location.origin + '/accounts/profile/' + encodeURIComponent(username) + '/';
     if (navigator.share) {
       navigator.share({
         title: '{{ profile.get_display_name }} on Nearby Chat',

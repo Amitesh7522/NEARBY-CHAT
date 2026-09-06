@@ -37,6 +37,11 @@ def register_view(request):
         return redirect('core:home')
 
     if request.method == 'POST':
+        from apps.core.security import is_rate_limited
+        if is_rate_limited(request, action='register', limit=10, window=3600):
+            messages.error(request, _('Too many registration attempts from this network. Please try again later.'))
+            return render(request, 'accounts/register.html', {'form': AccountRegisterForm()})
+
         form = AccountRegisterForm(request.POST)
         if form.is_valid():
             name = form.cleaned_data['name'].strip()
@@ -115,13 +120,33 @@ def login_view(request):
         return redirect('core:home')
 
     if request.method == 'POST':
+        from apps.core.security import check_rate_limit, record_failed_attempt, clear_failed_attempts
+        raw_username = request.POST.get('username', '').strip().lower()
+
+        # 1. Tier 1: User-specific cooldown (max 5 failed attempts per user/IP in 5 minutes)
+        # 2. Tier 2: Broad IP flood protection (max 30 failed attempts across all accounts from this IP in 5 minutes)
+        is_user_limited = bool(raw_username and check_rate_limit(request, action='login_fail_user', limit=5, key_extra=raw_username))
+        is_ip_limited = check_rate_limit(request, action='login_fail_ip', limit=30)
+
+        if is_user_limited or is_ip_limited:
+            messages.error(request, _('Too many failed login attempts. Please wait 5 minutes before trying again.'))
+            return render(request, 'accounts/login.html', {'form': UserLoginForm()})
+
         form = UserLoginForm(request, data=request.POST)
         if form.is_valid():
             user = form.get_user()
+            # Clear failure counters on valid credentials
+            if raw_username:
+                clear_failed_attempts(request, action='login_fail_user', key_extra=raw_username)
             login(request, user)
             messages.success(request, _('Welcome back, %(username)s!') % {'username': user.profile.get_display_name()})
             next_url = request.GET.get('next') or 'core:home'
             return redirect(next_url)
+        else:
+            # Increment failed attempt counters on invalid credentials
+            if raw_username:
+                record_failed_attempt(request, action='login_fail_user', window=300, key_extra=raw_username)
+            record_failed_attempt(request, action='login_fail_ip', window=300)
     else:
         form = UserLoginForm()
 

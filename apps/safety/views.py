@@ -58,6 +58,11 @@ def blocked_users_list_view(request):
 def file_report_view(request):
     """Handles submission of user, room, or message safety reports."""
     if request.method == 'POST':
+        from apps.core.security import is_rate_limited
+        if is_rate_limited(request, action='report_file', limit=10, window=300):
+            messages.warning(request, _('Too many reports submitted recently. Please wait a few minutes.'))
+            return redirect('core:home')
+
         reason = request.POST.get('reason', 'other')
         details = request.POST.get('details', '').strip()
         reported_username = request.POST.get('reported_username')

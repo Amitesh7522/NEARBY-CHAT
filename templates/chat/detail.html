@@ -2,6 +2,7 @@
 {% load i18n static %}
 
 {% block title %}{{ other_profile.get_display_name }} — Nearby Chat{% endblock %}
+{% block meta_robots %}<meta name="robots" content="noindex, nofollow">{% endblock %}
 
 {% block body_class %}is-chat-page{% endblock %}
 

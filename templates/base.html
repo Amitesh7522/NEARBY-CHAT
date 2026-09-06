@@ -13,8 +13,16 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Nearby Chat">
-  <link rel="apple-touch-icon" href="{% static 'images/icon.svg' %}">
-  
+  <meta name="description" content="{% block meta_description %}{% trans 'Connect with people nearby, join topic rooms, or start anonymous end-to-end encrypted private chats.' %}{% endblock %}">
+  {% block meta_robots %}{% endblock %}
+
+  <!-- Open Graph / Social Meta -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="{% block og_title %}{% trans 'Nearby Chat — Realtime Social & Discovery' %}{% endblock %}">
+  <meta property="og:description" content="{% block og_description %}{% trans 'Meet people nearby, chat in real-time, or create temporary E2EE private rooms.' %}{% endblock %}">
+  <meta property="og:image" content="{% static 'images/icon.svg' %}">
+  <meta name="twitter:card" content="summary">
+
   <!-- CSS Stylesheets -->
   <link rel="stylesheet" href="{% static 'css/tokens.css' %}">
   <link rel="stylesheet" href="{% static 'css/base.css' %}">
@@ -24,6 +32,7 @@
   <link rel="stylesheet" href="{% static 'css/rooms.css' %}">
   
   {% block extra_head %}{% endblock %}
+</head>
 <body class="{% block body_class %}{% endblock %}">
   <div class="app-container">
     {% include 'includes/header.html' %}

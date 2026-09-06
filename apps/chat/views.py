@@ -98,6 +98,11 @@ def quick_connect_view(request):
     Instantly connects the user with a new available person across the platform
     (prioritizing shared interests or specific topic if requested, excluding existing chat partners, blocked users, and self).
     """
+    from apps.core.security import is_rate_limited
+    if is_rate_limited(request, action='quick_connect', limit=20, window=60):
+        messages.warning(request, _('You are connecting too quickly. Please wait a moment.'))
+        return redirect('chat:list')
+
     mode = request.GET.get('mode', 'interests')
     specific_interest = request.GET.get('interest', '').strip()
 
@@ -187,6 +192,13 @@ def submit_rating_view(request):
     if request.method != 'POST':
         return JsonResponse({'success': False, 'error': 'POST method required.'}, status=405)
 
+    from apps.core.security import is_rate_limited
+    if is_rate_limited(request, action='rate', limit=15, window=60):
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest' or (request.content_type and 'application/json' in request.content_type.lower()):
+            return JsonResponse({'success': False, 'error': str(_('Rate limit exceeded. Please wait a moment.'))}, status=429)
+        messages.warning(request, _('Rate limit exceeded. Please wait a moment.'))
+        return redirect('core:home')
+
     conversation_id = request.POST.get('conversation_id')
     target_username = request.POST.get('target_username')
     score = request.POST.get('score')
@@ -223,6 +235,10 @@ def messages_api(request, conversation_id):
     """
     Loads historical messages before a given cursor message ID for smooth infinite upward scrolling.
     """
+    from apps.core.security import is_rate_limited
+    if is_rate_limited(request, action='api_messages', limit=60, window=60):
+        return Response({'error': 'Rate limit exceeded. Please wait.'}, status=429)
+
     before_id = request.GET.get('before_id')
     try:
         messages_list = ChatService.get_messages_page(

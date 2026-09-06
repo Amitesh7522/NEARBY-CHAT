@@ -338,3 +338,57 @@ def invite_landing_view(request, code):
     request.session['invite_code'] = clean_code
     return redirect(f'/accounts/register/?ref={clean_code}')
 
+
+def robots_txt_view(request):
+    """
+    Production robots.txt for search engine crawlers.
+    Explicitly disallows indexing of private chats, private rooms, user media, and APIs.
+    """
+    from django.http import HttpResponse
+    sitemap_url = request.build_absolute_uri('/sitemap.xml')
+    content = f"""User-agent: *
+Allow: /
+Allow: /legal/
+Allow: /accounts/login/
+Allow: /accounts/register/
+Allow: /private/
+
+# Disallow indexing of private rooms, direct chats, uploads, and APIs
+Disallow: /private/room/
+Disallow: /private/join/
+Disallow: /private/i/
+Disallow: /chats/
+Disallow: /matching/
+Disallow: /admin/
+Disallow: /media/
+Disallow: /api/
+Disallow: /health/
+Disallow: /notifications/
+
+Sitemap: {sitemap_url}
+"""
+    return HttpResponse(content.strip(), content_type='text/plain')
+
+
+def sitemap_xml_view(request):
+    """
+    Public sitemap.xml indexing only public landing, discovery, and legal information pages.
+    """
+    from django.http import HttpResponse
+    base = request.build_absolute_uri('/')[:-1]
+    urls = [
+        f"{base}/",
+        f"{base}/private/",
+        f"{base}/legal/privacy-policy/",
+        f"{base}/legal/terms-of-use/",
+        f"{base}/legal/help-support/",
+        f"{base}/accounts/login/",
+        f"{base}/accounts/register/",
+    ]
+    xml_items = "\n".join([f"  <url><loc>{u}</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>" for u in urls])
+    content = f"""<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+{xml_items}
+</urlset>"""
+    return HttpResponse(content.strip(), content_type='application/xml')
+

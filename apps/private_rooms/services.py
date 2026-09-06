@@ -240,9 +240,11 @@ class PrivateRoomService:
         return True
 
     @classmethod
-    def validate_and_save_upload(cls, room, participant, file_obj, message_type):
+    def validate_and_save_upload(cls, room, participant, file_obj, message_type,
+                                 client_msg_id=None, encrypted_file_key='', file_iv=''):
         """
         Validates uploaded media or file with strict server-side rules and saves message.
+        Supports client-side E2EE encrypted uploads where encrypted_file_key and file_iv are provided.
         """
         if room.is_expired or room.is_deleted or room.is_blocked:
             raise ValidationError("This private room is no longer active.")
@@ -259,55 +261,56 @@ class PrivateRoomService:
             raise ValidationError(f"File type '{ext}' is not allowed for security reasons.")
 
         file_size = getattr(file_obj, 'size', 0)
+        is_encrypted = bool(encrypted_file_key and file_iv)
 
-        # Route by message type
+        # Route by message type & size limits
         if message_type == 'image':
-            if ext not in ALLOWED_IMAGE_EXTENSIONS:
+            if not is_encrypted and ext not in ALLOWED_IMAGE_EXTENSIONS:
                 raise ValidationError("Invalid image format. Allowed: JPG, PNG, WEBP, GIF.")
             if file_size > MAX_IMAGE_SIZE:
                 raise ValidationError(f"Image exceeds maximum limit of {MAX_IMAGE_SIZE // (1024*1024)} MB.")
             actual_type = 'image'
 
-            # Privacy: Strip EXIF & GPS location metadata while preserving image quality & orientation
-            try:
-                import io
-                from PIL import Image, ImageOps
-                image_data = file_obj.read()
-                file_obj.seek(0)
-                img = Image.open(io.BytesIO(image_data))
-                img = ImageOps.exif_transpose(img)
-                out_io = io.BytesIO()
-                
-                fmt = img.format if img.format in ('JPEG', 'PNG', 'WEBP', 'GIF') else ('JPEG' if ext in ('.jpg', '.jpeg') else 'PNG')
-                if fmt == 'JPEG':
-                    if img.mode in ('RGBA', 'P'):
-                        img = img.convert('RGB')
-                    img.save(out_io, format='JPEG', quality=88, optimize=True)
-                elif fmt == 'PNG':
-                    img.save(out_io, format='PNG', optimize=True)
-                elif fmt == 'WEBP':
-                    img.save(out_io, format='WEBP', quality=88)
-                elif fmt == 'GIF':
-                    img.save(out_io, format='GIF')
-                else:
-                    if img.mode in ('RGBA', 'P'):
-                        img = img.convert('RGB')
-                    img.save(out_io, format='JPEG', quality=88)
-                
-                out_bytes = out_io.getvalue()
-                file_obj = ContentFile(out_bytes, name=unique_storage_name)
-                file_size = len(out_bytes)
-            except Exception:
-                file_obj.seek(0)
+            if not is_encrypted:
+                # Privacy: Strip EXIF & GPS location metadata on unencrypted images
+                try:
+                    import io
+                    from PIL import Image, ImageOps
+                    image_data = file_obj.read()
+                    file_obj.seek(0)
+                    img = Image.open(io.BytesIO(image_data))
+                    img = ImageOps.exif_transpose(img)
+                    out_io = io.BytesIO()
+                    
+                    fmt = img.format if img.format in ('JPEG', 'PNG', 'WEBP', 'GIF') else ('JPEG' if ext in ('.jpg', '.jpeg') else 'PNG')
+                    if fmt == 'JPEG':
+                        if img.mode in ('RGBA', 'P'):
+                            img = img.convert('RGB')
+                        img.save(out_io, format='JPEG', quality=88, optimize=True)
+                    elif fmt == 'PNG':
+                        img.save(out_io, format='PNG', optimize=True)
+                    elif fmt == 'WEBP':
+                        img.save(out_io, format='WEBP', quality=88)
+                    elif fmt == 'GIF':
+                        img.save(out_io, format='GIF')
+                    else:
+                        if img.mode in ('RGBA', 'P'):
+                            img = img.convert('RGB')
+                        img.save(out_io, format='JPEG', quality=88)
+                    
+                    out_bytes = out_io.getvalue()
+                    file_obj = ContentFile(out_bytes, name=getattr(file_obj, 'name', 'image.jpg'))
+                    file_size = len(out_bytes)
+                except Exception:
+                    file_obj.seek(0)
         elif message_type == 'audio':
-            if ext not in ALLOWED_AUDIO_EXTENSIONS:
-                # Accept .webm/.wav fallback
+            if not is_encrypted and ext not in ALLOWED_AUDIO_EXTENSIONS:
                 ext = '.webm'
             if file_size > MAX_AUDIO_SIZE:
                 raise ValidationError(f"Audio file exceeds maximum limit of {MAX_AUDIO_SIZE // (1024*1024)} MB.")
             actual_type = 'audio'
         else:
-            if ext not in ALLOWED_DOCUMENT_EXTENSIONS:
+            if not is_encrypted and ext not in ALLOWED_DOCUMENT_EXTENSIONS:
                 raise ValidationError(f"File type '{ext}' is not permitted.")
             if file_size > MAX_DOCUMENT_SIZE:
                 raise ValidationError(f"File exceeds maximum limit of {MAX_DOCUMENT_SIZE // (1024*1024)} MB.")
@@ -318,20 +321,33 @@ class PrivateRoomService:
         if len(safe_base) > 100:
             safe_base = safe_base[:100]
 
-        # Generate unique storage filename
-        unique_storage_name = f"{uuid.uuid4().hex}{ext}"
+        # Generate unique storage filename (.enc if encrypted, original ext otherwise)
+        storage_ext = '.enc' if is_encrypted else ext
+        unique_storage_name = f"{uuid.uuid4().hex}{storage_ext}"
         file_obj.name = unique_storage_name
 
         mime_type = mimetypes.guess_type(raw_name)[0] or 'application/octet-stream'
 
+        # Check idempotency for pre-generated client_msg_id
+        if client_msg_id:
+            existing = PrivateRoomMessage.objects.filter(
+                room=room,
+                client_msg_id=client_msg_id
+            ).first()
+            if existing:
+                return existing
+
         msg = PrivateRoomMessage.objects.create(
             room=room,
             sender=participant,
+            client_msg_id=client_msg_id or ('pr_msg_' + uuid.uuid4().hex[:12]),
             message_type=actual_type,
             file=file_obj,
             file_name=safe_base,
             file_size=file_size,
             file_mime_type=mime_type,
+            encrypted_file_key=encrypted_file_key or '',
+            file_iv=file_iv or '',
             content=safe_base
         )
 

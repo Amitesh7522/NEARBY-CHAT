@@ -139,6 +139,7 @@ class MessageStatus(models.Model):
         indexes = [
             models.Index(fields=['user', 'status']),
             models.Index(fields=['message', 'user']),
+            models.Index(fields=['message', 'user', 'status']),
         ]
 
     def __str__(self):

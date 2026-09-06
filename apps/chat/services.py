@@ -164,13 +164,17 @@ class ChatService:
     def get_messages_page(conversation_id, user, before_id=None, limit=25):
         """
         Fetches a page of messages for infinite scroll.
-        Returns messages in chronological order.
+        Returns messages in chronological order with sender profiles prefetched.
         """
         conversation = Conversation.objects.get(id=conversation_id)
         if not ConversationParticipant.objects.filter(conversation=conversation, user=user).exists():
             raise PermissionDenied("User is not a participant.")
 
-        qs = Message.objects.filter(conversation=conversation, is_deleted=False)
+        qs = Message.objects.filter(
+            conversation=conversation,
+            is_deleted=False
+        ).select_related('sender', 'sender__profile')
+
         if before_id:
             try:
                 # Only filter if before_id is a valid UUID
@@ -211,32 +215,63 @@ class ChatService:
     def get_user_conversations_summary(user):
         """
         Fetches all conversations for user with last message, unread count, and other participant details.
+        Bulk-prefetches all related models and unread aggregations to eliminate N+1 queries (runs in O(1) query count).
         Strictly deduplicates by conversation partner so no partner ever appears twice.
         """
-        participations = ConversationParticipant.objects.filter(
+        participations = list(ConversationParticipant.objects.filter(
             user=user,
             conversation__is_active=True
-        ).select_related('conversation').order_by('-conversation__updated_at')
+        ).select_related('conversation').order_by('-conversation__updated_at'))
 
+        if not participations:
+            return []
+
+        conv_ids = [p.conversation_id for p in participations]
+
+        # 1. Bulk-fetch all other participants with profiles in 1 query
+        other_participants_qs = ConversationParticipant.objects.filter(
+            conversation_id__in=conv_ids
+        ).exclude(
+            user=user
+        ).select_related('user', 'user__profile')
+
+        other_participants_map = {}
+        for op in other_participants_qs:
+            other_participants_map[op.conversation_id] = op.user
+
+        # 2. Bulk-aggregate unread message counts in 1 query
+        unread_counts_qs = MessageStatus.objects.filter(
+            message__conversation_id__in=conv_ids,
+            user=user,
+            status__in=['sent', 'delivered']
+        ).values('message__conversation_id').annotate(unread_count=Count('id'))
+
+        unread_map = {row['message__conversation_id']: row['unread_count'] for row in unread_counts_qs}
+
+        # 3. Bulk-fetch latest messages across these conversations in 1 query
+        recent_messages = Message.objects.filter(
+            conversation_id__in=conv_ids,
+            is_deleted=False
+        ).order_by('-created_at')
+
+        latest_message_map = {}
+        for msg in recent_messages:
+            if msg.conversation_id not in latest_message_map:
+                latest_message_map[msg.conversation_id] = msg
+
+        # 4. Assemble final summary in memory
         summary = []
         seen_partner_ids = set()
 
         for p in participations:
             conv = p.conversation
-            other_user = conv.get_other_participant(user)
+            other_user = other_participants_map.get(conv.id)
             if not other_user or other_user.id in seen_partner_ids:
                 continue
 
             seen_partner_ids.add(other_user.id)
-
-            last_message = conv.messages.filter(is_deleted=False).order_by('-created_at').first()
-            
-            # Count unread messages
-            unread_count = MessageStatus.objects.filter(
-                message__conversation=conv,
-                user=user,
-                status__in=['sent', 'delivered']
-            ).count()
+            last_message = latest_message_map.get(conv.id)
+            unread_count = unread_map.get(conv.id, 0)
 
             summary.append({
                 'conversation': conv,

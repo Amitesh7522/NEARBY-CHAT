@@ -116,3 +116,70 @@ def validate_websocket_origin(scope):
         return True
 
     return False
+
+
+def get_client_ip(request):
+    """Safely extracts client IP from request headers, respecting reverse proxy headers."""
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        return x_forwarded_for.split(',')[0].strip()
+    return request.META.get('REMOTE_ADDR', '127.0.0.1')
+
+
+def get_rate_limit_key(request, action='default', key_extra=None, include_user=True):
+    """Generates a standardized cache key for rate-limiting."""
+    ip = get_client_ip(request)
+    extra = f"_{key_extra.strip().lower()}" if key_extra else ""
+    user_part = ""
+    if include_user:
+        user = getattr(request, 'user', None)
+        if user and getattr(user, 'is_authenticated', False):
+            user_part = f"_u{user.id}"
+    return f"nc_rl_{action}_{ip}{user_part}{extra}"
+
+
+def is_rate_limited(request, action='default', limit=10, window=60, key_extra=None):
+    """
+    Centralized Redis/Cache-backed rate limiter for IP/user actions across NearbyChat.
+    Atomically records attempt and returns True if limit exceeded within window (seconds), False otherwise.
+    """
+    from django.core.cache import cache
+    cache_key = get_rate_limit_key(request, action=action, key_extra=key_extra)
+
+    count = cache.get(cache_key, 0)
+    if count >= limit:
+        return True
+    cache.set(cache_key, count + 1, window)
+    return False
+
+
+def check_rate_limit(request, action='default', limit=10, key_extra=None):
+    """
+    Checks if an action is currently rate-limited without incrementing the counter.
+    Returns True if limit reached, False otherwise.
+    """
+    from django.core.cache import cache
+    cache_key = get_rate_limit_key(request, action=action, key_extra=key_extra)
+    count = cache.get(cache_key, 0)
+    return count >= limit
+
+
+def record_failed_attempt(request, action='default', window=300, key_extra=None):
+    """
+    Increments the failed attempt counter for a specific action and key (e.g. login failure).
+    Returns the new failure count.
+    """
+    from django.core.cache import cache
+    cache_key = get_rate_limit_key(request, action=action, key_extra=key_extra)
+    count = cache.get(cache_key, 0) + 1
+    cache.set(cache_key, count, window)
+    return count
+
+
+def clear_failed_attempts(request, action='default', key_extra=None):
+    """
+    Clears any recorded failure counters upon successful authentication or completion.
+    """
+    from django.core.cache import cache
+    cache_key = get_rate_limit_key(request, action=action, key_extra=key_extra)
+    cache.delete(cache_key)

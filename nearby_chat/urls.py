@@ -7,7 +7,19 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.conf.urls.i18n import i18n_patterns
 
+from apps.core.health import liveness_check_view, readiness_check_view
+from apps.core.views import robots_txt_view, sitemap_xml_view
+
 urlpatterns = [
+    # SEO & Crawlers
+    path('robots.txt', robots_txt_view, name='robots_txt'),
+    path('sitemap.xml', sitemap_xml_view, name='sitemap_xml'),
+
+    # Production Health & Probes
+    path('health/', liveness_check_view, name='health_live'),
+    path('health/live/', liveness_check_view, name='health_liveness'),
+    path('health/ready/', readiness_check_view, name='health_readiness'),
+
     # Language switch endpoint
     path('i18n/', include('django.conf.urls.i18n')),
     
