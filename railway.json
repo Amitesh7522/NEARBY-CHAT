@@ -5,7 +5,7 @@
   },
   "deploy": {
     "startCommand": "daphne -b 0.0.0.0 -p $PORT nearby_chat.asgi:application",
-    "preDeployCommand": "python manage.py migrate --noinput && python manage.py collectstatic --noinput",
+    "preDeployCommand": "python manage.py migrate --noinput",
     "healthcheckPath": "/health/",
     "healthcheckTimeout": 30,
     "restartPolicyType": "ON_FAILURE",
