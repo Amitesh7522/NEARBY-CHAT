@@ -73,7 +73,6 @@ Railway uses `railway.json` and `Procfile` included in the root of the repositor
 ### `Procfile`
 ```procfile
 web: daphne -b 0.0.0.0 -p $PORT nearby_chat.asgi:application
-release: python manage.py migrate --noinput && python manage.py collectstatic --noinput
 ```
 
 ### `railway.json`
@@ -85,6 +84,7 @@ release: python manage.py migrate --noinput && python manage.py collectstatic --
   },
   "deploy": {
     "startCommand": "daphne -b 0.0.0.0 -p $PORT nearby_chat.asgi:application",
+    "preDeployCommand": "python manage.py migrate --noinput && python manage.py collectstatic --noinput",
     "healthcheckPath": "/health/",
     "healthcheckTimeout": 30,
     "restartPolicyType": "ON_FAILURE",
@@ -93,8 +93,8 @@ release: python manage.py migrate --noinput && python manage.py collectstatic --
 }
 ```
 
-- **Release Phase**: Automatically runs database migrations (`python manage.py migrate --noinput`) and compresses static assets (`python manage.py collectstatic --noinput`) before traffic is shifted to the new build.
-- **Web Phase**: Starts the ASGI asynchronous Daphne server binding to all network interfaces (`0.0.0.0`) on the port dynamically allocated by Railway (`$PORT`).
+- **Pre-Deploy Phase (`preDeployCommand`)**: Automatically runs database migrations (`python manage.py migrate --noinput`) and compresses static assets (`python manage.py collectstatic --noinput`) inside the container at runtime where Railway's private networking to PostgreSQL is active, before traffic is shifted to the new build.
+- **Web Phase (`startCommand`)**: Starts the ASGI asynchronous Daphne server binding to all network interfaces (`0.0.0.0`) on the port dynamically allocated by Railway (`$PORT`).
 
 ---
 
