@@ -89,8 +89,8 @@ class PrivateRoomClient {
         this.decryptAllPendingMedia();
       }
 
-      // If WebSocket is open, send public key announcement
-      if (this.socket && this.socket.ws && this.socket.ws.readyState === WebSocket.OPEN) {
+      // If WebSocket is open or queued, send public key announcement
+      if (this.socket) {
         this.sendKeyExchange();
       }
     } catch (err) {
@@ -209,6 +209,12 @@ class PrivateRoomClient {
 
     this.socket = new RobustWebSocket(wsUrl);
 
+    this.socket.on('open', () => {
+      if (this.myPublicKey) {
+        this.sendKeyExchange();
+      }
+    });
+
     this.socket.on('connect', () => {
       if (this.myPublicKey) {
         this.sendKeyExchange();
@@ -216,6 +222,9 @@ class PrivateRoomClient {
     });
 
     this.socket.on('room_status', async (data) => {
+      if (this.myPublicKey) {
+        this.sendKeyExchange();
+      }
       if (data.time_remaining_seconds !== undefined) {
         this.timeRemaining = data.time_remaining_seconds;
       }
@@ -228,6 +237,20 @@ class PrivateRoomClient {
       if (data.session_state) {
         this.sessionState = data.session_state;
         this.updateGatingState();
+      }
+    });
+
+    this.socket.on('peer_joined', async (data) => {
+      if (this.myPublicKey) {
+        this.sendKeyExchange();
+      }
+      if (data.public_key) {
+        await this.handlePeerPublicKey(data.public_key);
+      }
+      const statusEl = document.getElementById('header-partner-status');
+      if (statusEl) {
+        statusEl.innerHTML = `<span style="width: 6px; height: 6px; border-radius: 50%; background: #10b981; display: inline-block;"></span><span>${data.temp_name || 'Partner'} · Online</span>`;
+        statusEl.style.display = 'inline-flex';
       }
     });
 

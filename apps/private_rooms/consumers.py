@@ -72,12 +72,36 @@ class PrivateRoomConsumer(AsyncJsonWebsocketConsumer):
             'peer_role': state_data.get('peer_role', ''),
         })
 
+        # Broadcast peer joined to group so peer immediately exchanges public keys
+        await self.channel_layer.group_send(
+            self.room_group_name,
+            {
+                'type': 'private_peer_joined_event',
+                'sender_id': str(self.participant.id),
+                'sender_role': 'creator' if self.participant.is_creator else 'guest',
+                'temp_name': self.participant.temp_name,
+                'avatar_color': self.participant.temp_avatar_color,
+                'public_key': self.participant.public_key or '',
+            }
+        )
+
     async def disconnect(self, close_code):
         if hasattr(self, 'room_group_name'):
             await self.channel_layer.group_discard(
                 self.room_group_name,
                 self.channel_name
             )
+
+    async def private_peer_joined_event(self, event):
+        if event['sender_id'] != str(self.participant.id):
+            await self.send_json({
+                'type': 'peer_joined',
+                'sender_id': event['sender_id'],
+                'sender_role': event['sender_role'],
+                'temp_name': event['temp_name'],
+                'avatar_color': event['avatar_color'],
+                'public_key': event['public_key'],
+            })
 
     async def receive_json(self, content):
         """
