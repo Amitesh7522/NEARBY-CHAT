@@ -39,15 +39,28 @@
           {{ invite_url }}
         </span>
         <div style="display: flex; gap: var(--space-2); flex-shrink: 0;">
-          <button type="button" onclick="copyInviteLink()" id="btn-copy-link" class="btn btn-sm btn-primary" style="padding: 6px 12px; font-size: var(--text-xs);">
+          <button type="button" onclick="copyInviteLink()" id="btn-copy-link" class="btn btn-sm btn-secondary" style="padding: 6px 12px; font-size: var(--text-xs);">
             <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
             <span id="copy-link-label">{% trans "Copy" %}</span>
           </button>
-          <button type="button" onclick="shareInviteLink()" class="btn btn-sm btn-secondary" style="padding: 6px 12px; font-size: var(--text-xs);" title="{% trans 'Share link' %}">
+          <button type="button" onclick="shareInviteLink()" class="btn btn-sm btn-primary" style="padding: 6px 14px; font-size: var(--text-xs); font-weight: 700;" title="{% trans 'Share link' %}">
             <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
-            {% trans "Share" %}
+            <span>{% trans "Share" %}</span>
           </button>
         </div>
+      </div>
+
+      <!-- Quick Social Sharing Apps -->
+      <div style="display: flex; align-items: center; gap: 8px; margin-top: 10px; flex-wrap: wrap;">
+        <a id="wa-share-btn" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-sm" style="background: #25D366; color: white; border: none; font-size: 11px; padding: 6px 12px; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 5px; text-decoration: none; font-weight: 700;">
+          <span>💬 WhatsApp</span>
+        </a>
+        <a id="tg-share-btn" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-sm" style="background: #0088cc; color: white; border: none; font-size: 11px; padding: 6px 12px; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 5px; text-decoration: none; font-weight: 700;">
+          <span>✈️ Telegram</span>
+        </a>
+        <a id="sms-share-btn" href="#" class="btn btn-sm btn-secondary" style="font-size: 11px; padding: 6px 12px; border-radius: var(--radius-full); display: inline-flex; align-items: center; gap: 5px; text-decoration: none; font-weight: 700;">
+          <span>✉️ SMS</span>
+        </a>
       </div>
     </div>
 
@@ -75,12 +88,70 @@
   </div>
 
 </div>
+
+<!-- Social Share Sheet Modal (Fallback for desktop or unsupported Web Share) -->
+<div id="share-modal" onclick="closeShareModal()" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 1000; align-items: center; justify-content: center; padding: var(--space-4);">
+  <div class="card" onclick="event.stopPropagation()" style="max-width: 420px; width: 100%; padding: var(--space-5); text-align: center;">
+    <h3 style="margin-bottom: var(--space-2); font-size: var(--text-md);">{% trans "Share Private Room" %}</h3>
+    <p style="font-size: var(--text-xs); color: var(--text-muted); margin-bottom: var(--space-4);">
+      {% trans "Choose an app to share your private invite link and join code directly:" %}
+    </p>
+
+    <div style="display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-4);">
+      <a id="modal-wa-btn" href="#" target="_blank" rel="noopener noreferrer" class="btn" style="background: #25D366; color: white; border: none; font-size: var(--text-sm); font-weight: 700; padding: 11px; border-radius: var(--radius-md); text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px;">
+        <span>💬 {% trans "Share via WhatsApp" %}</span>
+      </a>
+
+      <a id="modal-tg-btn" href="#" target="_blank" rel="noopener noreferrer" class="btn" style="background: #0088cc; color: white; border: none; font-size: var(--text-sm); font-weight: 700; padding: 11px; border-radius: var(--radius-md); text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px;">
+        <span>✈️ {% trans "Share via Telegram" %}</span>
+      </a>
+
+      <a id="modal-sms-btn" href="#" class="btn btn-secondary" style="font-size: var(--text-sm); font-weight: 700; padding: 11px; border-radius: var(--radius-md); text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px;">
+        <span>✉️ {% trans "Share via SMS / Messages" %}</span>
+      </a>
+
+      <button type="button" onclick="copyInviteLink(); closeShareModal();" class="btn btn-secondary" style="font-size: var(--text-sm); font-weight: 700; padding: 11px; border-radius: var(--radius-md);">
+        📋 {% trans "Copy Invite Link" %}
+      </button>
+
+      <button type="button" onclick="copyJoinCode(); closeShareModal();" class="btn btn-secondary" style="font-size: var(--text-sm); font-weight: 700; padding: 11px; border-radius: var(--radius-md);">
+        🔑 {% trans "Copy Join Code" %} ({{ room.join_code }})
+      </button>
+    </div>
+
+    <button type="button" onclick="closeShareModal()" class="btn btn-secondary btn-sm" style="width: 100%;">
+      {% trans "Close" %}
+    </button>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
   const inviteUrl = "{{ invite_url }}";
   const joinCode = "{{ room.join_code }}";
+  const shareMessage = `Join my private encrypted room on Nearby Chat:\n${inviteUrl}\n\nJoin Code: ${joinCode}`;
+
+  document.addEventListener('DOMContentLoaded', () => {
+    // Populate social share URLs
+    const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareMessage)}`;
+    const tgUrl = `https://t.me/share/url?url=${encodeURIComponent(inviteUrl)}&text=${encodeURIComponent(`Join my private encrypted room on Nearby Chat (Code: ${joinCode})`)}`;
+    const smsUrl = `sms:?body=${encodeURIComponent(shareMessage)}`;
+
+    const waBtn = document.getElementById('wa-share-btn');
+    const tgBtn = document.getElementById('tg-share-btn');
+    const smsBtn = document.getElementById('sms-share-btn');
+    const modalWa = document.getElementById('modal-wa-btn');
+    const modalTg = document.getElementById('modal-tg-btn');
+    const modalSms = document.getElementById('modal-sms-btn');
+
+    if (waBtn) waBtn.href = waUrl;
+    if (tgBtn) tgBtn.href = tgUrl;
+    if (smsBtn) smsBtn.href = smsUrl;
+    if (modalWa) modalWa.href = waUrl;
+    if (modalTg) modalTg.href = tgUrl;
+    if (modalSms) modalSms.href = smsUrl;
+  });
 
   function copyInviteLink() {
     navigator.clipboard.writeText(inviteUrl).then(() => {
@@ -113,17 +184,29 @@
   }
 
   function shareInviteLink() {
+    const shareData = {
+      title: 'Private Room — Nearby Chat',
+      text: `Join my private encrypted 1-to-1 room on Nearby Chat (Join Code: ${joinCode}):`,
+      url: inviteUrl
+    };
+
     if (navigator.share) {
-      navigator.share({
-        title: 'Private Room — Nearby Chat',
-        text: "{% trans 'Join my private 1-to-1 room on Nearby Chat:' %}",
-        url: inviteUrl
-      }).catch(err => {
-        if (err.name !== 'AbortError') copyInviteLink();
+      navigator.share(shareData).catch(err => {
+        if (err.name !== 'AbortError') openShareModal();
       });
     } else {
-      copyInviteLink();
+      openShareModal();
     }
+  }
+
+  function openShareModal() {
+    const modal = document.getElementById('share-modal');
+    if (modal) modal.style.display = 'flex';
+  }
+
+  function closeShareModal() {
+    const modal = document.getElementById('share-modal');
+    if (modal) modal.style.display = 'none';
   }
 </script>
 {% endblock %}

@@ -240,21 +240,22 @@ def join_code_view(request):
         elif status in ('expired', 'deleted'):
             return render(request, 'private_rooms/expired.html', {'room': room})
 
-        # Broadcast participant joined via channel layer to notify waiting creator in real time
-        channel_layer = get_channel_layer()
-        if channel_layer:
-            async_to_sync(channel_layer.group_send)(
-                f"private_room_{room.id}",
-                {
-                    'type': 'private_participant_joined_event',
-                    'participant_id': str(participant.id),
-                    'temp_name': participant.temp_name,
-                    'avatar_color': participant.temp_avatar_color,
-                    'is_creator': participant.is_creator,
-                    'public_key': participant.public_key or '',
-                    'message': f"👋 {participant.temp_name} joined the private room.",
-                }
-            )
+        # Broadcast participant joined via channel layer to notify waiting creator in real time only on new join
+        if status == 'joined':
+            channel_layer = get_channel_layer()
+            if channel_layer:
+                async_to_sync(channel_layer.group_send)(
+                    f"private_room_{room.id}",
+                    {
+                        'type': 'private_participant_joined_event',
+                        'participant_id': str(participant.id),
+                        'temp_name': participant.temp_name,
+                        'avatar_color': participant.temp_avatar_color,
+                        'is_creator': participant.is_creator,
+                        'public_key': participant.public_key or '',
+                        'message': f"👋 {participant.temp_name} joined the private room.",
+                    }
+                )
 
         return redirect('private_rooms:chat', room_id=room.id)
 
@@ -334,21 +335,22 @@ def join_invite_view(request, secure_token):
     elif status in ('expired', 'deleted'):
         return render(request, 'private_rooms/expired.html', {'room': room})
 
-    # Broadcast participant joined via channel layer to notify waiting creator in real time
-    channel_layer = get_channel_layer()
-    if channel_layer:
-        async_to_sync(channel_layer.group_send)(
-            f"private_room_{room.id}",
-            {
-                'type': 'private_participant_joined_event',
-                'participant_id': str(participant.id),
-                'temp_name': participant.temp_name,
-                'avatar_color': participant.temp_avatar_color,
-                'is_creator': participant.is_creator,
-                'public_key': participant.public_key or '',
-                'message': f"👋 {participant.temp_name} joined the private room.",
-            }
-        )
+    # Broadcast participant joined via channel layer to notify waiting creator in real time only on new join
+    if status == 'joined':
+        channel_layer = get_channel_layer()
+        if channel_layer:
+            async_to_sync(channel_layer.group_send)(
+                f"private_room_{room.id}",
+                {
+                    'type': 'private_participant_joined_event',
+                    'participant_id': str(participant.id),
+                    'temp_name': participant.temp_name,
+                    'avatar_color': participant.temp_avatar_color,
+                    'is_creator': participant.is_creator,
+                    'public_key': participant.public_key or '',
+                    'message': f"👋 {participant.temp_name} joined the private room.",
+                }
+            )
 
     return redirect('private_rooms:chat', room_id=room.id)
 
@@ -390,8 +392,13 @@ def room_chat_view(request, room_id):
     # Load initial messages
     initial_messages = room.messages.select_related('sender').order_by('created_at')[:50]
 
+    invite_url = request.build_absolute_uri(
+        reverse('private_rooms:invite_landing', kwargs={'secure_token': room.secure_token})
+    )
+
     return render(request, 'private_rooms/chat.html', {
         'room': room,
+        'invite_url': invite_url,
         'current_participant': participant,
         'current_participant_role': 'creator' if participant.is_creator else 'guest',
         'other_participant': other_participant,

@@ -119,9 +119,14 @@
       <p style="font-size: 11px; color: var(--text-muted); margin: 6px 0 10px 0; line-height: 1.4;">
         {% trans "Share join code" %} <b style="color: var(--text-primary); font-family: monospace;">{{ room.join_code }}</b> {% trans "or your invite link. Messaging will unlock as soon as keys are exchanged." %}
       </p>
-      <button type="button" onclick="copyJoinCode('{{ room.join_code }}')" class="btn btn-sm btn-secondary" style="font-size: 11px; padding: 4px 12px;">
-        📋 {% trans "Copy Join Code" %}
-      </button>
+      <div style="display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;">
+        <button type="button" onclick="copyJoinCode('{{ room.join_code }}')" class="btn btn-sm btn-secondary" style="font-size: 11px; padding: 5px 12px;">
+          📋 {% trans "Copy Code" %}
+        </button>
+        <button type="button" onclick="shareInviteLink()" class="btn btn-sm btn-primary" style="font-size: 11px; padding: 5px 14px; font-weight: 700;">
+          🔗 {% trans "Share Invite" %}
+        </button>
+      </div>
     </div>
 
     {% for msg in initial_messages %}
@@ -395,6 +400,42 @@
     </div>
   </div>
 </div>
+
+<!-- Social Share Sheet Modal -->
+<div id="share-modal" onclick="closeShareModal()" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 1050; align-items: center; justify-content: center; padding: var(--space-4);">
+  <div class="card" onclick="event.stopPropagation()" style="max-width: 420px; width: 100%; padding: var(--space-5); text-align: center;">
+    <h3 style="margin-bottom: var(--space-2); font-size: var(--text-md);">{% trans "Share Private Room" %}</h3>
+    <p style="font-size: var(--text-xs); color: var(--text-muted); margin-bottom: var(--space-4);">
+      {% trans "Invite your partner to join this private room:" %}
+    </p>
+
+    <div style="display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-4);">
+      <a id="modal-wa-btn" href="https://api.whatsapp.com/send?text={{ invite_url|urlencode }}%20(Join%20Code:%20{{ room.join_code }})" target="_blank" rel="noopener noreferrer" class="btn" style="background: #25D366; color: white; border: none; font-size: var(--text-sm); font-weight: 700; padding: 11px; border-radius: var(--radius-md); text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px;">
+        <span>💬 {% trans "Share via WhatsApp" %}</span>
+      </a>
+
+      <a id="modal-tg-btn" href="https://t.me/share/url?url={{ invite_url|urlencode }}&text={{ 'Join my private encrypted room on Nearby Chat (Code: '|add:room.join_code|add:')'|urlencode }}" target="_blank" rel="noopener noreferrer" class="btn" style="background: #0088cc; color: white; border: none; font-size: var(--text-sm); font-weight: 700; padding: 11px; border-radius: var(--radius-md); text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px;">
+        <span>✈️ {% trans "Share via Telegram" %}</span>
+      </a>
+
+      <a id="modal-sms-btn" href="sms:?body={{ 'Join my private encrypted room on Nearby Chat: '|add:invite_url|add:' (Code: '|add:room.join_code|add:')'|urlencode }}" class="btn btn-secondary" style="font-size: var(--text-sm); font-weight: 700; padding: 11px; border-radius: var(--radius-md); text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px;">
+        <span>✉️ {% trans "Share via SMS / Messages" %}</span>
+      </a>
+
+      <button type="button" onclick="copyInviteLink(); closeShareModal();" class="btn btn-secondary" style="font-size: var(--text-sm); font-weight: 700; padding: 11px; border-radius: var(--radius-md);">
+        📋 {% trans "Copy Invite Link" %}
+      </button>
+
+      <button type="button" onclick="copyJoinCode('{{ room.join_code }}'); closeShareModal();" class="btn btn-secondary" style="font-size: var(--text-sm); font-weight: 700; padding: 11px; border-radius: var(--radius-md);">
+        🔑 {% trans "Copy Join Code" %} ({{ room.join_code }})
+      </button>
+    </div>
+
+    <button type="button" onclick="closeShareModal()" class="btn btn-secondary btn-sm" style="width: 100%;">
+      {% trans "Close" %}
+    </button>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -556,6 +597,49 @@
   function closeReportModal() {
     const m = document.getElementById('report-modal');
     if (m) m.style.display = 'none';
+  }
+
+  const inviteUrl = "{{ invite_url|default:'' }}";
+  const currentJoinCode = "{{ room.join_code }}";
+
+  function copyInviteLink() {
+    if (inviteUrl && navigator.clipboard) {
+      navigator.clipboard.writeText(inviteUrl).then(() => {
+        if (typeof window.showToast === 'function') {
+          window.showToast("Invite link copied to clipboard!", "success");
+        } else {
+          alert("Invite link copied: " + inviteUrl);
+        }
+      }).catch(() => {
+        prompt("Copy invite link:", inviteUrl);
+      });
+    }
+  }
+
+  function shareInviteLink() {
+    const shareData = {
+      title: 'Private Room — Nearby Chat',
+      text: "Join my private encrypted 1-to-1 room on Nearby Chat (Join Code: " + currentJoinCode + "):",
+      url: inviteUrl
+    };
+
+    if (navigator.share) {
+      navigator.share(shareData).catch(err => {
+        if (err.name !== 'AbortError') openShareModal();
+      });
+    } else {
+      openShareModal();
+    }
+  }
+
+  function openShareModal() {
+    const modal = document.getElementById('share-modal');
+    if (modal) modal.style.display = 'flex';
+  }
+
+  function closeShareModal() {
+    const modal = document.getElementById('share-modal');
+    if (modal) modal.style.display = 'none';
   }
 </script>
 {% endblock %}

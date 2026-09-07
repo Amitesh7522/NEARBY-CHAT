@@ -197,6 +197,11 @@ class PrivateRoomService:
             avatar_color = secrets.choice(available_colors) if available_colors else cls.get_random_avatar_color()
 
             clean_name = cls.sanitize_temp_name(temp_name)
+            existing_names = set(PrivateRoomParticipant.objects.filter(room=room).values_list('temp_name', flat=True))
+            if clean_name in existing_names:
+                clean_name = cls.generate_random_temp_name()
+                while clean_name in existing_names:
+                    clean_name = cls.generate_random_temp_name()
 
             participant = PrivateRoomParticipant.objects.create(
                 room=room,

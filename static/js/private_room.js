@@ -290,6 +290,22 @@ class PrivateRoomClient {
     this.socket.on('participant_joined', handleParticipantJoined);
     this.socket.on('peer_joined', handleParticipantJoined);
 
+    // Peer online presence (reconnect / tab switch without duplicate chat messages)
+    this.socket.on('peer_online', async (data) => {
+      const senderId = data.participant_id || data.sender_id;
+      if (senderId && senderId === this.currentParticipantId) return;
+
+      if (data.temp_name) {
+        this.updatePartnerHeader(data.temp_name);
+      }
+      if (this.myPublicKey) {
+        this.sendKeyExchange();
+      }
+      if (data.public_key) {
+        await this.handlePeerPublicKey(data.public_key);
+      }
+    });
+
     this.socket.on('e2ee_established', async (data) => {
       const peerKey = (this.myRole === 'creator') ? data.guest_public_key : data.creator_public_key;
       if (peerKey) {
@@ -301,12 +317,6 @@ class PrivateRoomClient {
       if (data.public_key) {
         await this.handlePeerPublicKey(data.public_key);
       }
-    });
-
-    this.socket.on('peer_left', (data) => {
-      this.appendSystemMessage(`👋 ${data.temp_name || 'Partner'} left the room.`);
-      const wrapper = document.getElementById('header-partner-wrapper');
-      if (wrapper) wrapper.style.display = 'none';
     });
 
     this.socket.on('chat_message', async (data) => {
@@ -819,6 +829,10 @@ class PrivateRoomClient {
     } else if (data.event === 'blocked') {
       alert("This private room session has been blocked.");
       window.location.reload();
+    } else if (data.event === 'participant_left') {
+      this.appendSystemMessage(data.message || "🚪 Partner left the private room.");
+      const wrapper = document.getElementById('header-partner-wrapper');
+      if (wrapper) wrapper.style.display = 'none';
     } else if (data.message) {
       this.appendSystemMessage(data.message);
     }
