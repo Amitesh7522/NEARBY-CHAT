@@ -1,0 +1,13 @@
+# Nixpacks configuration for NearbyChat on Railway
+[phases.setup]
+nixPkgs = ["python3", "postgresql_16.dev", "gcc"]
+
+[phases.install]
+cmds = ["python -m venv --copies /opt/venv && . /opt/venv/bin/activate && pip install -r requirements.txt"]
+
+# Explicitly disable build-time release command so migrations run at container runtime
+[phases.release]
+cmds = []
+
+[start]
+cmd = "daphne -b 0.0.0.0 -p $PORT nearby_chat.asgi:application"
