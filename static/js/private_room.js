@@ -52,6 +52,7 @@ class PrivateRoomClient {
     this.typingTimeout = null;
 
     // Initialize lifecycle
+    this.initVisualViewportHandler();
     this.initCryptoAndKeyExchange();
     this.initWebSocket();
     this.initEventListeners();
@@ -60,6 +61,25 @@ class PrivateRoomClient {
     this.updateGatingState();
     this.scrollToBottom();
     setTimeout(() => this.scrollToBottom(), 100);
+  }
+
+  // ============================================================================
+  // Mobile Visual Viewport Handling (Sticky Header & Keyboard Resizing)
+  // ============================================================================
+  initVisualViewportHandler() {
+    if (!window.visualViewport) return;
+
+    const onResize = () => {
+      const vh = window.visualViewport.height;
+      document.documentElement.style.setProperty('--visual-viewport-height', `${vh}px`);
+      if (document.activeElement === this.inputEl) {
+        setTimeout(() => this.scrollToBottom(), 60);
+      }
+    };
+
+    window.visualViewport.addEventListener('resize', onResize);
+    window.visualViewport.addEventListener('scroll', onResize);
+    onResize();
   }
 
   // ============================================================================
@@ -231,6 +251,9 @@ class PrivateRoomClient {
       if (data.my_public_key) {
         this.myPublicKey = data.my_public_key;
       }
+      if (data.peer_temp_name) {
+        this.updatePartnerHeader(data.peer_temp_name);
+      }
       if (data.peer_public_key) {
         await this.handlePeerPublicKey(data.peer_public_key);
       }
@@ -240,19 +263,32 @@ class PrivateRoomClient {
       }
     });
 
-    this.socket.on('peer_joined', async (data) => {
+    const handleParticipantJoined = async (data) => {
+      const senderId = data.participant_id || data.sender_id;
+      if (senderId && senderId === this.currentParticipantId) {
+        return;
+      }
+
+      // 1. Display join system message in chat stream
+      const joinMsg = data.message || `👋 ${data.temp_name || 'Guest'} joined the private room.`;
+      this.appendSystemMessage(joinMsg);
+
+      // 2. Update partner header online badge & name
+      this.updatePartnerHeader(data.temp_name || 'Partner');
+
+      // 3. Immediately exchange our public key with the newly joined participant
       if (this.myPublicKey) {
         this.sendKeyExchange();
       }
+
+      // 4. If peer provided their public key in the event, establish session
       if (data.public_key) {
         await this.handlePeerPublicKey(data.public_key);
       }
-      const statusEl = document.getElementById('header-partner-status');
-      if (statusEl) {
-        statusEl.innerHTML = `<span style="width: 6px; height: 6px; border-radius: 50%; background: #10b981; display: inline-block;"></span><span>${data.temp_name || 'Partner'} · Online</span>`;
-        statusEl.style.display = 'inline-flex';
-      }
-    });
+    };
+
+    this.socket.on('participant_joined', handleParticipantJoined);
+    this.socket.on('peer_joined', handleParticipantJoined);
 
     this.socket.on('e2ee_established', async (data) => {
       const peerKey = (this.myRole === 'creator') ? data.guest_public_key : data.creator_public_key;
@@ -265,6 +301,12 @@ class PrivateRoomClient {
       if (data.public_key) {
         await this.handlePeerPublicKey(data.public_key);
       }
+    });
+
+    this.socket.on('peer_left', (data) => {
+      this.appendSystemMessage(`👋 ${data.temp_name || 'Partner'} left the room.`);
+      const wrapper = document.getElementById('header-partner-wrapper');
+      if (wrapper) wrapper.style.display = 'none';
     });
 
     this.socket.on('chat_message', async (data) => {
@@ -735,8 +777,30 @@ class PrivateRoomClient {
   }
 
   // ============================================================================
-  // WebSocket System & Typing Handlers
+  // WebSocket System & UI Handlers
   // ============================================================================
+  updatePartnerHeader(tempName) {
+    const wrapper = document.getElementById('header-partner-wrapper');
+    const nameEl = document.getElementById('header-partner-name');
+    const statusEl = document.getElementById('header-partner-status');
+    if (nameEl) nameEl.textContent = tempName || 'Partner';
+    if (wrapper) wrapper.style.display = 'inline-flex';
+    if (statusEl) statusEl.style.display = 'inline-flex';
+  }
+
+  appendSystemMessage(msg) {
+    if (!msg) return;
+    const emptyState = document.getElementById('empty-state');
+    if (emptyState) emptyState.remove();
+
+    const row = document.createElement('div');
+    row.className = 'system-message-row';
+    row.style.cssText = 'text-align: center; margin: 6px 0;';
+    row.innerHTML = `<span style="font-size: 11px; color: var(--text-muted); background: var(--bg-subtle); padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border-color);">${this.escapeHtml(msg)}</span>`;
+    this.streamEl.appendChild(row);
+    this.scrollToBottom();
+  }
+
   handleTyping(data) {
     if (!this.typingEl) return;
     if (data.is_typing) {
@@ -756,12 +820,7 @@ class PrivateRoomClient {
       alert("This private room session has been blocked.");
       window.location.reload();
     } else if (data.message) {
-      const row = document.createElement('div');
-      row.className = 'system-message-row';
-      row.style.cssText = 'text-align: center; margin: 4px 0;';
-      row.innerHTML = `<span style="font-size: 11px; color: var(--text-muted); background: var(--bg-subtle); padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border-color);">${this.escapeHtml(data.message)}</span>`;
-      this.streamEl.appendChild(row);
-      this.scrollToBottom();
+      this.appendSystemMessage(data.message);
     }
   }
 

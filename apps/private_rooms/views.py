@@ -240,6 +240,22 @@ def join_code_view(request):
         elif status in ('expired', 'deleted'):
             return render(request, 'private_rooms/expired.html', {'room': room})
 
+        # Broadcast participant joined via channel layer to notify waiting creator in real time
+        channel_layer = get_channel_layer()
+        if channel_layer:
+            async_to_sync(channel_layer.group_send)(
+                f"private_room_{room.id}",
+                {
+                    'type': 'private_participant_joined_event',
+                    'participant_id': str(participant.id),
+                    'temp_name': participant.temp_name,
+                    'avatar_color': participant.temp_avatar_color,
+                    'is_creator': participant.is_creator,
+                    'public_key': participant.public_key or '',
+                    'message': f"👋 {participant.temp_name} joined the private room.",
+                }
+            )
+
         return redirect('private_rooms:chat', room_id=room.id)
 
     suggested_name = PrivateRoomService.generate_random_temp_name()
@@ -317,6 +333,22 @@ def join_invite_view(request, secure_token):
         return render(request, 'private_rooms/deleted.html', {'room': room})
     elif status in ('expired', 'deleted'):
         return render(request, 'private_rooms/expired.html', {'room': room})
+
+    # Broadcast participant joined via channel layer to notify waiting creator in real time
+    channel_layer = get_channel_layer()
+    if channel_layer:
+        async_to_sync(channel_layer.group_send)(
+            f"private_room_{room.id}",
+            {
+                'type': 'private_participant_joined_event',
+                'participant_id': str(participant.id),
+                'temp_name': participant.temp_name,
+                'avatar_color': participant.temp_avatar_color,
+                'is_creator': participant.is_creator,
+                'public_key': participant.public_key or '',
+                'message': f"👋 {participant.temp_name} joined the private room.",
+            }
+        )
 
     return redirect('private_rooms:chat', room_id=room.id)
 

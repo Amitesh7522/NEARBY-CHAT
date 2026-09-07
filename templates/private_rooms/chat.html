@@ -39,13 +39,14 @@
             <span>{% trans "Expires in" %}:</span>
             <span id="room-countdown-timer" style="font-weight: 700; color: var(--text-secondary);">{{ time_remaining_display }}</span>
           </span>
-          {% if other_participant %}
+          <span id="header-partner-wrapper" style="display: {% if other_participant %}inline-flex{% else %}none{% endif %}; align-items: center; gap: 6px;">
             <span style="opacity: 0.5;">·</span>
             <span id="header-partner-status" style="color: var(--text-secondary); font-size: 10px; display: inline-flex; align-items: center; gap: 3px;">
               <span style="width: 6px; height: 6px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
-              <span>{{ other_participant.temp_name }} · {% trans "Online" %}</span>
+              <span id="header-partner-name">{{ other_participant.temp_name|default:'' }}</span>
+              <span>· {% trans "Online" %}</span>
             </span>
-          {% endif %}
+          </span>
         </div>
       </div>
     </div>
