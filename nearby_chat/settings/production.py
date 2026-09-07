@@ -1,6 +1,6 @@
 """
 Production settings for Nearby Chat.
-Optimized for Railway, Render, Docker, and Cloud deployments.
+Optimized for Render, Cloud VPS, and Docker deployments.
 """
 import os
 from pathlib import Path
@@ -39,19 +39,16 @@ DEBUG = os.getenv('DJANGO_DEBUG', 'False').lower() in ('true', '1', 't')
 # Secret Key validation
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', SECRET_KEY)
 
-# Allowed Hosts Configuration
-# Includes user custom hosts, Railway domains, Render domains, and production custom domain
+# Allowed Hosts Configuration (Render, Custom Domain, Localhost)
 raw_allowed_hosts = os.getenv(
     'DJANGO_ALLOWED_HOSTS',
-    'nearbychat.in,www.nearbychat.in,localhost,127.0.0.1,.railway.app,.up.railway.app,.onrender.com'
+    'nearbychat.in,www.nearbychat.in,localhost,127.0.0.1,.onrender.com'
 )
 ALLOWED_HOSTS = [h.strip() for h in raw_allowed_hosts.split(',') if h.strip()]
 
-# Include Railway dynamic service domains if provided by Railway environment
-if os.getenv('RAILWAY_PUBLIC_DOMAIN'):
-    ALLOWED_HOSTS.append(os.getenv('RAILWAY_PUBLIC_DOMAIN').strip())
-if os.getenv('RAILWAY_STATIC_URL'):
-    ALLOWED_HOSTS.append(os.getenv('RAILWAY_STATIC_URL').strip())
+# Include Render dynamic service hostname if provided by Render environment
+if os.getenv('RENDER_EXTERNAL_HOSTNAME'):
+    ALLOWED_HOSTS.append(os.getenv('RENDER_EXTERNAL_HOSTNAME').strip())
 
 # Remove duplicates while preserving order
 ALLOWED_HOSTS = list(dict.fromkeys(ALLOWED_HOSTS))
@@ -59,38 +56,36 @@ ALLOWED_HOSTS = list(dict.fromkeys(ALLOWED_HOSTS))
 # CSRF Trusted Origins Configuration (Required for HTTPS POST / WebSockets in Django 4.0+)
 raw_csrf_origins = os.getenv(
     'CSRF_TRUSTED_ORIGINS',
-    'https://nearbychat.in,https://www.nearbychat.in,https://*.railway.app,https://*.up.railway.app,https://*.onrender.com'
+    'https://nearbychat.in,https://www.nearbychat.in,https://*.onrender.com'
 )
 CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in raw_csrf_origins.split(',') if origin.strip()]
 
-if os.getenv('RAILWAY_PUBLIC_DOMAIN'):
-    railway_domain_origin = f"https://{os.getenv('RAILWAY_PUBLIC_DOMAIN').strip()}"
-    if railway_domain_origin not in CSRF_TRUSTED_ORIGINS:
-        CSRF_TRUSTED_ORIGINS.append(railway_domain_origin)
+if os.getenv('RENDER_EXTERNAL_HOSTNAME'):
+    render_domain_origin = f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME').strip()}"
+    if render_domain_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(render_domain_origin)
 
-# Database Configuration
-# Supports Railway DATABASE_PRIVATE_URL, DATABASE_URL, or individual PG* / DB_* vars
-DATABASE_URL = os.getenv('DATABASE_PRIVATE_URL') or os.getenv('DATABASE_URL') or os.getenv('DATABASE_PUBLIC_URL')
+# Database Configuration (Render PostgreSQL DATABASE_URL)
+DATABASE_URL = os.getenv('DATABASE_URL')
 
 if DATABASE_URL:
     DATABASES = {
         'default': parse_database_url(DATABASE_URL, conn_max_age=600)
     }
-elif os.getenv('PGHOST') or os.getenv('DB_HOST'):
+elif os.getenv('DB_HOST') or os.getenv('PGHOST'):
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.getenv('PGDATABASE') or os.getenv('DB_NAME', 'nearby_chat_prod'),
-            'USER': os.getenv('PGUSER') or os.getenv('DB_USER', 'postgres'),
-            'PASSWORD': os.getenv('PGPASSWORD') or os.getenv('DB_PASSWORD', 'postgres'),
-            'HOST': os.getenv('PGHOST') or os.getenv('DB_HOST', 'localhost'),
-            'PORT': os.getenv('PGPORT') or os.getenv('DB_PORT', '5432'),
+            'NAME': os.getenv('DB_NAME') or os.getenv('PGDATABASE', 'nearby_chat_prod'),
+            'USER': os.getenv('DB_USER') or os.getenv('PGUSER', 'postgres'),
+            'PASSWORD': os.getenv('DB_PASSWORD') or os.getenv('PGPASSWORD', 'postgres'),
+            'HOST': os.getenv('DB_HOST') or os.getenv('PGHOST', 'localhost'),
+            'PORT': os.getenv('DB_PORT') or os.getenv('PGPORT', '5432'),
             'CONN_MAX_AGE': 600,
             'CONN_HEALTH_CHECKS': True,
         }
     }
 else:
-    # Fallback to base sqlite database for offline build/asset generation steps
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -99,11 +94,10 @@ else:
     }
 
 # Channels & Real-Time WebSocket Layer
-# Supports Railway REDIS_PRIVATE_URL or standard REDIS_URL
-USE_REDIS = os.getenv('USE_REDIS', 'True').lower() in ('true', '1', 't')
-REDIS_URL = os.getenv('REDIS_PRIVATE_URL') or os.getenv('REDIS_URL')
+REDIS_URL = os.getenv('REDIS_URL')
+USE_REDIS = bool(REDIS_URL) or os.getenv('USE_REDIS', 'False').lower() in ('true', '1', 't')
 
-if USE_REDIS and REDIS_URL:
+if REDIS_URL and USE_REDIS:
     CHANNEL_LAYERS = {
         'default': {
             'BACKEND': 'channels_redis.core.RedisChannelLayer',
@@ -112,7 +106,6 @@ if USE_REDIS and REDIS_URL:
             },
         },
     }
-    # Also configure Django Cache backend to use Redis when available
     CACHES = {
         'default': {
             'BACKEND': 'django.core.cache.backends.redis.RedisCache',
@@ -120,8 +113,6 @@ if USE_REDIS and REDIS_URL:
         }
     }
 else:
-    if USE_REDIS and not DEBUG and os.getenv('STRICT_REDIS', 'False').lower() in ('true', '1', 't'):
-        raise RuntimeError("REDIS_URL or REDIS_PRIVATE_URL environment variable is required when USE_REDIS is enabled in production.")
     CHANNEL_LAYERS = {
         'default': {
             'BACKEND': 'channels.layers.InMemoryChannelLayer',
@@ -139,7 +130,7 @@ STATIC_URL = '/static/'
 
 try:
     import whitenoise
-    STATICFILES_STORAGE_BACKEND = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+    STATICFILES_STORAGE_BACKEND = "whitenoise.storage.CompressedStaticFilesStorage"
 except ImportError:
     STATICFILES_STORAGE_BACKEND = "django.contrib.staticfiles.storage.StaticFilesStorage"
 
@@ -152,7 +143,7 @@ STORAGES = {
     },
 }
 
-# Reverse Proxy & Security Hardening (Railway / Render / Cloudflare / Nginx)
+# Reverse Proxy & Security Hardening (Render / Cloudflare / Nginx)
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 USE_X_FORWARDED_HOST = True
 USE_X_FORWARDED_PORT = True
