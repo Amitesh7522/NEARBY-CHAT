@@ -39,7 +39,8 @@ class AccountsTestCase(TestCase):
         })
         self.assertEqual(res.status_code, 302)
 
-    def test_registration_flow(self):
+    @patch('apps.accounts.services.BrevoEmailProvider.send_otp', return_value=(True, 'OTP sent'))
+    def test_registration_flow(self, mock_brevo):
         """New user signup properly creates user with Step 1 OTP and Step 2 profile personalization."""
         email = 'new@example.com'
         VerificationService.send_otp_challenge(email, purpose='signup')
