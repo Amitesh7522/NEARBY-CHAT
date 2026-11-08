@@ -1,2 +1,2 @@
 release: python manage.py migrate --noinput && python manage.py collectstatic --noinput
-web: python manage.py collectstatic --noinput && python manage.py migrate --noinput && python -m daphne -b 0.0.0.0 -p $PORT nearby_chat.asgi:application
+web: python manage.py collectstatic --noinput && sh entrypoint.sh

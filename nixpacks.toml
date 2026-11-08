@@ -16,4 +16,4 @@ cmds = [
 ]
 
 [start]
-cmd = "python manage.py migrate --noinput && python -m daphne -b 0.0.0.0 -p ${PORT:-8000} nearby_chat.asgi:application"
+cmd = "sh entrypoint.sh"

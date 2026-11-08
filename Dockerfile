@@ -50,11 +50,14 @@ RUN DATABASE_URL="sqlite:///dev/null" \
     DJANGO_SECRET_KEY="build-collectstatic-key" \
     python manage.py collectstatic --noinput --settings=nearby_chat.settings.production
 
+# Make entrypoint script executable
+RUN chmod +x /app/entrypoint.sh
+
 # Create non-root runtime user and set ownership of /app
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 USER appuser
 
 EXPOSE 8000
 
-# Start ASGI Daphne server using python module invocation on dynamic $PORT
-CMD ["sh", "-c", "python manage.py migrate --noinput && python -m daphne -b 0.0.0.0 -p ${PORT:-8000} nearby_chat.asgi:application"]
+# Start ASGI Daphne server via entrypoint script with dynamic $PORT expansion
+CMD ["sh", "/app/entrypoint.sh"]
