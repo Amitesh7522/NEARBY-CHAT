@@ -39,10 +39,10 @@ DEBUG = os.getenv('DJANGO_DEBUG', 'False').lower() in ('true', '1', 't')
 # Secret Key validation
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', SECRET_KEY)
 
-# Allowed Hosts Configuration (Render, Custom Domain, Localhost)
+# Allowed Hosts Configuration (Render, Railway, Custom Domain, Localhost)
 raw_allowed_hosts = os.getenv(
     'DJANGO_ALLOWED_HOSTS',
-    'nearbychat.in,www.nearbychat.in,localhost,127.0.0.1,.onrender.com'
+    'nearbychat.in,www.nearbychat.in,localhost,127.0.0.1,.onrender.com,.railway.app,.up.railway.app'
 )
 ALLOWED_HOSTS = [h.strip() for h in raw_allowed_hosts.split(',') if h.strip()]
 
@@ -50,13 +50,17 @@ ALLOWED_HOSTS = [h.strip() for h in raw_allowed_hosts.split(',') if h.strip()]
 if os.getenv('RENDER_EXTERNAL_HOSTNAME'):
     ALLOWED_HOSTS.append(os.getenv('RENDER_EXTERNAL_HOSTNAME').strip())
 
+# Include Railway dynamic service hostname if provided by Railway environment
+if os.getenv('RAILWAY_PUBLIC_DOMAIN'):
+    ALLOWED_HOSTS.append(os.getenv('RAILWAY_PUBLIC_DOMAIN').strip())
+
 # Remove duplicates while preserving order
 ALLOWED_HOSTS = list(dict.fromkeys(ALLOWED_HOSTS))
 
 # CSRF Trusted Origins Configuration (Required for HTTPS POST / WebSockets in Django 4.0+)
 raw_csrf_origins = os.getenv(
     'CSRF_TRUSTED_ORIGINS',
-    'https://nearbychat.in,https://www.nearbychat.in,https://*.onrender.com'
+    'https://nearbychat.in,https://www.nearbychat.in,https://*.onrender.com,https://*.railway.app,https://*.up.railway.app'
 )
 CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in raw_csrf_origins.split(',') if origin.strip()]
 
@@ -64,6 +68,11 @@ if os.getenv('RENDER_EXTERNAL_HOSTNAME'):
     render_domain_origin = f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME').strip()}"
     if render_domain_origin not in CSRF_TRUSTED_ORIGINS:
         CSRF_TRUSTED_ORIGINS.append(render_domain_origin)
+
+if os.getenv('RAILWAY_PUBLIC_DOMAIN'):
+    railway_domain_origin = f"https://{os.getenv('RAILWAY_PUBLIC_DOMAIN').strip()}"
+    if railway_domain_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(railway_domain_origin)
 
 # Database Configuration (Render PostgreSQL DATABASE_URL)
 DATABASE_URL = os.getenv('DATABASE_URL')
@@ -127,6 +136,10 @@ else:
 # Static Assets Serving with WhiteNoise
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATIC_URL = '/static/'
+STATICFILES_DIRS = [BASE_DIR / 'static']
+
+# Fallback: allows WhiteNoise to search STATICFILES_DIRS directly if an asset was not yet collected
+WHITENOISE_USE_FINDERS = True
 
 try:
     import whitenoise

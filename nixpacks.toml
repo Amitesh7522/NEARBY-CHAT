@@ -1,0 +1,19 @@
+# ==============================================================================
+# RAILWAY NIXPACKS CONFIGURATION
+# Used when Railway builds without Docker (Nixpacks auto-detect)
+# ==============================================================================
+
+[variables]
+DJANGO_SETTINGS_MODULE = "nearby_chat.settings.production"
+
+[phases.setup]
+nixPkgs = ["python312", "gcc", "postgresql"]
+
+[phases.build]
+cmds = [
+    "pip install -r requirements.txt",
+    "DATABASE_URL=sqlite:///dev/null DJANGO_SECRET_KEY=build-collectstatic-key python manage.py collectstatic --noinput --settings=nearby_chat.settings.production",
+]
+
+[start]
+cmd = "python manage.py migrate --noinput && daphne -b 0.0.0.0 -p ${PORT:-8000} nearby_chat.asgi:application"

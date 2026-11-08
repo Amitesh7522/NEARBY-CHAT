@@ -37,8 +37,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=builder /root/.local /root/.local
 COPY . /app
 
-# Collect static assets
-RUN python manage.py collectstatic --noinput --settings=nearby_chat.settings.base || true
+# Collect static assets during build with dummy values so WhiteNoise compresses assets
+RUN DATABASE_URL="sqlite:///dev/null" \
+    DJANGO_SECRET_KEY="build-collectstatic-key" \
+    python manage.py collectstatic --noinput --settings=nearby_chat.settings.production
 
 # Run as non-root app user
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
@@ -46,5 +48,5 @@ USER appuser
 
 EXPOSE 8000
 
-# Start ASGI Daphne server for both HTTP and WebSockets
-CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "nearby_chat.asgi:application"]
+# Start ASGI Daphne server using dynamic $PORT assigned by Railway/Render
+CMD ["sh", "-c", "python manage.py migrate --noinput && daphne -b 0.0.0.0 -p ${PORT:-8000} nearby_chat.asgi:application"]

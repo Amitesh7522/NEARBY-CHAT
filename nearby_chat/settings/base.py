@@ -44,6 +44,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.locale.LocaleMiddleware',  # i18n support
     'django.middleware.common.CommonMiddleware',
@@ -54,12 +55,6 @@ MIDDLEWARE = [
     'apps.accounts.middleware.UpdateLastActiveMiddleware',
     'apps.core.middleware.SecurityHeadersMiddleware',
 ]
-
-try:
-    import whitenoise
-    MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
-except ImportError:
-    pass
 
 ROOT_URLCONF = 'nearby_chat.urls'
 
