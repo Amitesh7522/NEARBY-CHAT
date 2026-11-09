@@ -7,12 +7,15 @@ import os
 import random
 import hashlib
 import logging
+import math
 from datetime import timedelta
 import urllib.request
 import urllib.parse
 import json
 from django.utils import timezone
 from django.conf import settings
+from django.db import connection, transaction
+from django.db.utils import DatabaseError
 from .models import OTPVerification
 
 logger = logging.getLogger(__name__)
@@ -247,6 +250,11 @@ def get_sms_provider() -> SMSProviderAdapter:
     return ConsoleSMSProvider()
 
 class VerificationService:
+    OTP_HOURLY_LIMIT = 5
+    OTP_HOURLY_WINDOW = timedelta(hours=1)
+    OTP_RESEND_COOLDOWN = timedelta(seconds=60)
+    OTP_EXPIRY = timedelta(minutes=10)
+
     @staticmethod
     def normalize_identifier(identifier: str) -> str:
         """Normalizes email or phone number for consistent hashing and lookup."""
@@ -258,6 +266,72 @@ class VerificationService:
         if len(clean_digits) >= 10:
             return clean_digits[-10:]
         return clean_digits
+
+    @staticmethod
+    def _lock_recipient_rate_limit(identifier: str) -> None:
+        """Serialize recipient quota checks in PostgreSQL without storing a lock row."""
+        if connection.vendor != 'postgresql':
+            return
+
+        lock_key = int.from_bytes(
+            hashlib.sha256(identifier.encode('utf-8')).digest()[:8],
+            byteorder='big',
+            signed=True,
+        )
+        with connection.cursor() as cursor:
+            cursor.execute('SELECT pg_advisory_xact_lock(%s)', [lock_key])
+
+    @classmethod
+    def _create_otp_record(cls, identifier: str, purpose: str, ip_address: str, now):
+        """Reserve one recipient delivery slot and create a pending OTP record."""
+        with transaction.atomic():
+            cls._lock_recipient_rate_limit(identifier)
+
+            window_start = now - cls.OTP_HOURLY_WINDOW
+            recent_requests = OTPVerification.objects.filter(
+                identifier=identifier,
+                created_at__gte=window_start,
+            ).order_by('created_at')
+
+            if recent_requests.count() >= cls.OTP_HOURLY_LIMIT:
+                oldest_request = recent_requests.first()
+                remaining = (oldest_request.created_at + cls.OTP_HOURLY_WINDOW - now).total_seconds()
+                cooldown = max(1, math.ceil(remaining))
+                return None, (
+                    "Too many verification requests. Please wait before requesting again.",
+                    cooldown,
+                )
+
+            latest_otp = OTPVerification.objects.filter(
+                identifier=identifier,
+                purpose=purpose,
+                is_used=False,
+            ).order_by('-created_at').first()
+
+            if latest_otp:
+                remaining = (cls.OTP_RESEND_COOLDOWN - (now - latest_otp.created_at)).total_seconds()
+                if remaining > 0:
+                    return None, (
+                        f"Please wait {math.ceil(remaining)} seconds before requesting a new code.",
+                        max(1, math.ceil(remaining)),
+                    )
+
+            OTPVerification.objects.filter(
+                identifier=identifier,
+                purpose=purpose,
+                is_used=False,
+            ).update(is_used=True)
+
+            otp = generate_secure_otp(6)
+            record = OTPVerification.objects.create(
+                identifier=identifier,
+                otp_hash=hash_otp(otp),
+                purpose=purpose,
+                expires_at=now + cls.OTP_EXPIRY,
+                ip_address=ip_address,
+                last_resend_at=now,
+            )
+            return (record, otp), None
 
     @staticmethod
     def send_otp_challenge(identifier: str, purpose: str = 'signup', ip_address: str = None) -> tuple[bool, str, int]:
@@ -272,66 +346,41 @@ class VerificationService:
 
         now = timezone.now()
 
-        # 1. Check Rate Limiting (Max 5 requests per hour per identifier)
-        one_hour_ago = now - timedelta(hours=1)
-        recent_requests_count = OTPVerification.objects.filter(
-            identifier=norm_ident,
-            created_at__gte=one_hour_ago
-        ).count()
+        try:
+            created, rate_limit_error = VerificationService._create_otp_record(
+                norm_ident, purpose, ip_address, now,
+            )
+        except DatabaseError:
+            logger.error("OTP recipient rate-limit database operation failed")
+            return False, "Verification service is temporarily unavailable. Please try again.", 0
 
-        if recent_requests_count >= 5:
-            return False, "Too many verification requests. Please wait an hour before requesting again.", 3600
+        if rate_limit_error:
+            message, cooldown = rate_limit_error
+            return False, message, cooldown
 
-        # 2. Check 60-Second Resend Cooldown
-        latest_otp = OTPVerification.objects.filter(
-            identifier=norm_ident,
-            purpose=purpose,
-            is_used=False
-        ).order_by('-created_at').first()
+        record, otp = created
 
-        if latest_otp and (now - latest_otp.created_at).total_seconds() < 60:
-            remaining_cooldown = int(60 - (now - latest_otp.created_at).total_seconds())
-            return False, f"Please wait {remaining_cooldown} seconds before requesting a new code.", remaining_cooldown
-
-        # 3. Invalidate prior unused OTPs for this identifier & purpose
-        OTPVerification.objects.filter(
-            identifier=norm_ident,
-            purpose=purpose,
-            is_used=False
-        ).update(is_used=True)
-
-        # 4. Generate cryptographically secure OTP and hash it
-        otp = generate_secure_otp(6)
-        hashed = hash_otp(otp)
-        expires_at = now + timedelta(minutes=10)
-
-        record = OTPVerification.objects.create(
-            identifier=norm_ident,
-            otp_hash=hashed,
-            purpose=purpose,
-            expires_at=expires_at,
-            ip_address=ip_address,
-            last_resend_at=now,
-        )
-
-        # 5. Dispatch through Brevo API (for email) or SMS provider (for phone)
-        if '@' in norm_ident:
-            success, msg = BrevoEmailProvider.send_otp(norm_ident, otp)
-        else:
-            provider = get_sms_provider()
-            dispatched = provider.send_otp(norm_ident, otp)
-            if dispatched:
-                success, msg = True, "Verification code sent via SMS."
+        try:
+            if '@' in norm_ident:
+                success, msg = BrevoEmailProvider.send_otp(norm_ident, otp)
             else:
-                success, msg = False, "Failed to send SMS verification code."
+                provider = get_sms_provider()
+                dispatched = provider.send_otp(norm_ident, otp)
+                success = bool(dispatched)
+                msg = "Verification code sent via SMS." if success else "Failed to send SMS verification code."
+        except Exception:
+            logger.error("OTP provider dispatch failed")
+            success, msg = False, "Unable to send a verification code. Please try again."
 
         if success:
             return True, msg, 60
-        else:
-            # Clean up failed dispatch record
-            record.is_used = True
-            record.save(update_fields=['is_used'])
-            return False, msg, 0
+
+        try:
+            record.delete()
+        except DatabaseError:
+            logger.error("Failed to remove undelivered OTP record")
+            return False, "Verification service is temporarily unavailable. Please try again.", 0
+        return False, msg, 0
 
     @staticmethod
     def verify_otp_challenge(identifier: str, otp: str, purpose: str = 'signup') -> tuple[bool, str]:
@@ -344,40 +393,41 @@ class VerificationService:
         if not norm_ident or not otp:
             return False, "Verification code and email/phone are required."
 
-        record = OTPVerification.objects.filter(
-            identifier=norm_ident,
-            purpose=purpose,
-            is_used=False
-        ).order_by('-created_at').first()
+        with transaction.atomic():
+            record = OTPVerification.objects.select_for_update().filter(
+                identifier=norm_ident,
+                purpose=purpose,
+                is_used=False
+            ).order_by('-created_at').first()
 
-        if not record:
-            return False, "Invalid or expired verification code. Please request a new one."
+            if not record:
+                return False, "Invalid or expired verification code. Please request a new one."
 
-        if timezone.now() >= record.expires_at:
-            record.is_used = True
-            record.save(update_fields=['is_used'])
-            return False, "Verification code has expired. Please request a new one."
+            if timezone.now() >= record.expires_at:
+                record.is_used = True
+                record.save(update_fields=['is_used'])
+                return False, "Verification code has expired. Please request a new one."
 
-        if record.attempts >= 5:
-            record.is_used = True
-            record.save(update_fields=['is_used'])
-            return False, "Too many failed attempts. This code has been invalidated. Please request a new one."
+            if record.attempts >= 5:
+                record.is_used = True
+                record.save(update_fields=['is_used'])
+                return False, "Too many failed attempts. This code has been invalidated. Please request a new one."
 
-        # Increment attempt counter
-        record.attempts += 1
+            # Increment attempt counter inside the transaction to avoid a race between
+            # concurrent verification requests for the same OTP record.
+            record.attempts += 1
 
-        # Check cryptographic hash match
-        if record.otp_hash == hash_otp(otp):
-            record.is_used = True
-            record.save(update_fields=['attempts', 'is_used'])
-            return True, "Verification successful."
-        else:
+            if record.otp_hash == hash_otp(otp):
+                record.is_used = True
+                record.save(update_fields=['attempts', 'is_used'])
+                return True, "Verification successful."
+
             remaining_attempts = 5 - record.attempts
             if remaining_attempts <= 0:
                 record.is_used = True
                 record.save(update_fields=['attempts', 'is_used'])
                 return False, "Too many failed attempts. This code has been invalidated. Please request a new one."
-            
+
             record.save(update_fields=['attempts'])
             return False, f"Incorrect verification code. {remaining_attempts} attempt(s) remaining."
 

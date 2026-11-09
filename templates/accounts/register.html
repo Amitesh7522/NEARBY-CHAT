@@ -43,7 +43,7 @@
         <label class="form-label" for="id_email">{% trans "Email" %}</label>
         <div style="display: flex; gap: 8px; width: 100%; max-width: 100%; box-sizing: border-box;">
           <input type="email" name="email" id="id_email" class="input-field" placeholder="you@example.com" value="{{ form.email.value|default:'' }}" required autocomplete="email" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="email" style="flex: 1 1 auto; min-width: 0; width: 0;">
-          <button type="button" id="send-otp-btn" class="btn btn-secondary" onclick="requestOTP()" style="white-space: nowrap; font-size: var(--text-xs); padding: 0 14px; font-weight: 600; flex-shrink: 0;">
+          <button type="button" id="send-otp-btn" class="btn btn-secondary" style="white-space: nowrap; font-size: var(--text-xs); padding: 0 14px; font-weight: 600; flex-shrink: 0;">
             <span id="send-otp-text">{% trans "Send OTP" %}</span>
             <span id="send-otp-spinner" class="spinner-sm" style="display: none;"></span>
           </button>
@@ -56,7 +56,7 @@
       <div class="form-group" id="otp-container">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-1);">
           <label class="form-label" for="id_otp" style="margin: 0;">{% trans "OTP" %}</label>
-          <button type="button" id="resend-otp-btn" onclick="requestOTP()" style="background: none; border: none; color: var(--primary); font-size: var(--text-xs); cursor: pointer; padding: 0; display: none; font-weight: 600;">
+          <button type="button" id="resend-otp-btn" style="background: none; border: none; color: var(--primary); font-size: var(--text-xs); cursor: pointer; padding: 0; display: none; font-weight: 600;">
             {% trans "Resend Code" %}
           </button>
         </div>
@@ -92,146 +92,5 @@
   </div>
 </div>
 
-<script>
-  let cooldownTimer = null;
-
-  function isCooldownActive() {
-    const expiry = parseInt(sessionStorage.getItem('nearby_otp_expiry') || '0', 10);
-    return expiry > Date.now();
-  }
-
-  async function requestOTP() {
-    if (isCooldownActive()) return;
-
-    const emailInput = document.getElementById('id_email');
-    const email = emailInput.value.trim().toLowerCase();
-    const feedback = document.getElementById('otp-feedback');
-    const sendBtn = document.getElementById('send-otp-btn');
-    const sendText = document.getElementById('send-otp-text');
-    const sendSpinner = document.getElementById('send-otp-spinner');
-
-    if (!email) {
-      feedback.style.display = 'block';
-      feedback.style.color = 'var(--error)';
-      feedback.innerText = '{% trans "Please enter your email address first." %}';
-      emailInput.focus();
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      feedback.style.display = 'block';
-      feedback.style.color = 'var(--error)';
-      feedback.innerText = '{% trans "Please enter a valid email address." %}';
-      emailInput.focus();
-      return;
-    }
-
-    sendBtn.disabled = true;
-    sendText.style.display = 'none';
-    sendSpinner.style.display = 'inline-block';
-    feedback.style.display = 'none';
-
-    try {
-      const response = await fetch("{% url 'accounts:api_send_otp' %}", {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': '{{ csrf_token }}',
-        },
-        body: JSON.stringify({
-          identifier: email,
-          email: email,
-          purpose: 'signup'
-        })
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        feedback.style.display = 'block';
-        feedback.style.color = 'var(--success, #10b981)';
-        feedback.innerText = '✓ ' + (data.message || '{% trans "Verification code sent to your email." %}');
-        document.getElementById('id_otp').focus();
-        const cooldown = data.cooldown || 60;
-        const expiry = Date.now() + cooldown * 1000;
-        sessionStorage.setItem('nearby_otp_expiry', expiry.toString());
-        startCooldown(expiry);
-      } else {
-        feedback.style.display = 'block';
-        feedback.style.color = 'var(--error)';
-        feedback.innerText = data.error || data.detail || '{% trans "Failed to send code. Please try again." %}';
-        
-        if (data.cooldown && data.cooldown > 0) {
-          const expiry = Date.now() + data.cooldown * 1000;
-          sessionStorage.setItem('nearby_otp_expiry', expiry.toString());
-          startCooldown(expiry);
-        } else {
-          sendBtn.disabled = false;
-          sendText.style.display = 'inline';
-          sendSpinner.style.display = 'none';
-        }
-      }
-    } catch (err) {
-      feedback.style.display = 'block';
-      feedback.style.color = 'var(--error)';
-      feedback.innerText = '{% trans "Network error. Please check your connection." %}';
-      sendBtn.disabled = false;
-      sendText.style.display = 'inline';
-      sendSpinner.style.display = 'none';
-    }
-  }
-
-  function startCooldown(expiryTimestamp) {
-    const sendBtn = document.getElementById('send-otp-btn');
-    const sendText = document.getElementById('send-otp-text');
-    const sendSpinner = document.getElementById('send-otp-spinner');
-    const resendBtn = document.getElementById('resend-otp-btn');
-
-    sendSpinner.style.display = 'none';
-    sendText.style.display = 'inline';
-    sendBtn.disabled = true;
-    resendBtn.style.display = 'inline';
-
-    if (cooldownTimer) clearInterval(cooldownTimer);
-
-    function update() {
-      const now = Date.now();
-      const remainingSeconds = Math.max(0, Math.ceil((expiryTimestamp - now) / 1000));
-      if (remainingSeconds > 0) {
-        sendText.innerText = `(${remainingSeconds}s)`;
-        resendBtn.innerText = `{% trans "Resend in" %} (${remainingSeconds}s)`;
-        resendBtn.style.opacity = '0.6';
-        resendBtn.style.pointerEvents = 'none';
-      } else {
-        clearInterval(cooldownTimer);
-        sessionStorage.removeItem('nearby_otp_expiry');
-        sendBtn.disabled = false;
-        sendText.innerText = '{% trans "Send OTP" %}';
-        resendBtn.innerText = '{% trans "Resend Code" %}';
-        resendBtn.style.opacity = '1';
-        resendBtn.style.pointerEvents = 'auto';
-      }
-    }
-
-    update();
-    cooldownTimer = setInterval(update, 500);
-  }
-
-  function restoreCooldownIfActive() {
-    const expiry = parseInt(sessionStorage.getItem('nearby_otp_expiry') || '0', 10);
-    if (expiry > Date.now()) {
-      startCooldown(expiry);
-    }
-  }
-
-  window.addEventListener('pageshow', restoreCooldownIfActive);
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      restoreCooldownIfActive();
-    }
-  });
-
-  document.addEventListener('DOMContentLoaded', restoreCooldownIfActive);
-</script>
+<script type="module" src="{% static 'js/otp.js' %}"></script>
 {% endblock %}

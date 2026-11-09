@@ -8,11 +8,14 @@ import os
 import re
 import uuid
 import mimetypes
+import logging
 from urllib.parse import urlparse
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.core.exceptions import ValidationError
 from PIL import Image, ImageOps
+
+logger = logging.getLogger(__name__)
 
 # Forbidden dangerous executable/script extensions across the entire platform
 DISALLOWED_EXTENSIONS = {
@@ -183,3 +186,37 @@ def clear_failed_attempts(request, action='default', key_extra=None):
     from django.core.cache import cache
     cache_key = get_rate_limit_key(request, action=action, key_extra=key_extra)
     cache.delete(cache_key)
+
+
+class RateLimitBackendUnavailable(Exception):
+    """Raised when a security-sensitive Redis rate limit cannot be enforced."""
+
+
+def consume_atomic_redis_rate_limit(request, action, limit, window, key_extra=None, cache_backend=None):
+    """
+    Atomically consume one slot from a fixed-window Redis rate limit.
+    A Redis failure is deliberately fail-closed so protected endpoints never silently run without their abuse protection.
+    """
+    if not getattr(settings, 'REDIS_URL', None):
+        raise RateLimitBackendUnavailable('Redis is not configured')
+
+    if cache_backend is None:
+        from django.core.cache import cache
+        cache_backend = cache
+
+    cache_key = get_rate_limit_key(request, action=action, key_extra=key_extra)
+
+    try:
+        for _ in range(2):
+            if cache_backend.add(cache_key, 1, timeout=window):
+                return False
+            try:
+                return cache_backend.incr(cache_key) > limit
+            except ValueError:
+                continue
+    except Exception:
+        logger.error('Atomic Redis rate limiter unavailable for action=%s', action)
+        raise RateLimitBackendUnavailable('Redis rate limiter unavailable')
+
+    logger.error('Atomic Redis rate limiter unavailable for action=%s', action)
+    raise RateLimitBackendUnavailable('Redis rate limiter unavailable')

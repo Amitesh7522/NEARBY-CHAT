@@ -17,6 +17,7 @@ from rest_framework import status
 from .forms import AccountRegisterForm, UserRegisterForm, OnboardingProfileForm, UserLoginForm, ProfileEditForm, UserPreferenceForm
 from .models import Profile, UserPreference, Interest, PRESET_AVATARS, generate_unique_user_identity
 from .services import VerificationService, ReferralService, BadgeService
+from apps.core.security import RateLimitBackendUnavailable, consume_atomic_redis_rate_limit, get_client_ip
 from apps.safety.models import Block
 from apps.chat.services import ChatService
 
@@ -291,6 +292,25 @@ def send_otp_api(request):
     if not identifier:
         return Response({'success': False, 'error': _('Phone number or email is required.')}, status=status.HTTP_400_BAD_REQUEST)
 
+    try:
+        ip_limited = consume_atomic_redis_rate_limit(
+            request,
+            action='otp_send_ip',
+            limit=20,
+            window=3600,
+        )
+    except RateLimitBackendUnavailable:
+        return Response(
+            {'success': False, 'error': _('Verification service is temporarily unavailable. Please try again shortly.')},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+    if ip_limited:
+        return Response(
+            {'success': False, 'error': _('Too many verification requests from this network. Please try again later.')},
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+        )
+
     if '@' in identifier:
         identifier = identifier.lower()
 
@@ -305,7 +325,7 @@ def send_otp_api(request):
                 if User.objects.filter(phone_number=phone_std).exists():
                     return Response({'success': False, 'error': _('An account with this phone number already exists.')}, status=status.HTTP_400_BAD_REQUEST)
 
-    ip_address = request.META.get('REMOTE_ADDR')
+    ip_address = get_client_ip(request)
     success, msg, cooldown = VerificationService.send_otp_challenge(identifier, purpose, ip_address=ip_address)
     if success:
         return Response({'success': True, 'message': msg, 'cooldown': cooldown, 'status': 'sent'})
